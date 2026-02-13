@@ -77,12 +77,25 @@ Following the Standard Go Project Layout:
     ```
 
 3.  Generate Protobufs:
+    *   **Windows**:
+        Run the batch script (detects local `tools/protoc` or system PATH):
+        ```cmd
+        .\scripts\proto_gen.bat
+        ```
+    *   **Linux/Mac**:
+        ```bash
+        ./scripts/proto_gen.sh
+        ```
+
+4.  Dependency Injection (Optional):
+    If you modify `wire.go`, regenerate `wire_gen.go`:
     ```bash
-    # Ensure you have protoc-gen-go installed
-    ./scripts/proto_gen.sh
+    go install github.com/google/wire/cmd/wire@latest
+    wire ./cmd/gateway
+    wire ./cmd/portal
     ```
 
-4.  Run Services (Development):
+5.  Run Services (Development):
     ```bash
     go run cmd/world/main.go
     go run cmd/gateway/main.go

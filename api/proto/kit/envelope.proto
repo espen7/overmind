@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package kit;
+
+option go_package = "overmind/pkg/pb/kit";
+
+// Envelope 是所有 Actor 间通信的顶层容器。
+// 它提供了分布式追踪和元数据上下文。
+message Envelope {
+    string trace_id = 1;       // 分布式追踪 ID
+    int64 timestamp = 2;       // Unix 时间戳 (纳秒)
+    
+    // 负载可以是 EdgeLetter (来自/发往客户端) 或 MeshLetter (内部)。
+    oneof payload {
+        EdgeLetter edge = 3;   
+        MeshLetter mesh = 4;   
+    }
+}
+
+// EdgeLetter 封装了源自或发往外部客户端 (Edge) 的消息。
+// 对应设计中的 "ClientLetter" 概念。
+message EdgeLetter {
+    int32 msg_type = 1;        // 协议 ID (例如 1001 代表登录)
+    bytes body = 2;            // 具体消息的序列化 Protobuf体
+    int64 session_id = 3;      // 网关 Channel/Session ID (用于路由响应)
+    string player_id = 4;      // 关联的玩家 ID (认证后填充)
+    int32 msg_no = 5;          // 客户端序列号
+}
+
+// MeshLetter 封装了内部控制命令或系统消息。
+// 对应设计中的 "SystemLetter" 概念。
+message MeshLetter {
+    string cmd = 1;            // 命令动词: KICK, STOP, RELOAD 等
+    bytes params = 2;          // 序列化参数 (可选)
+    string sender_service = 3; // 发送方服务名称
+    string target_service = 4; // 目标服务名称
+}

@@ -1,0 +1,13 @@
+server:
+  name: "overmind-gateway"
+  port: 8080
+  env: "dev"
+
+redis:
+  addr: "localhost:6379"
+  password: ""
+  db: 0
+
+log:
+  level: "debug"
+  encoding: "console"

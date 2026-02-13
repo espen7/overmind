@@ -77,12 +77,25 @@ Overmind 是一个专为大规模并发和高可扩展性设计的分布式游�
     ```
 
 3.  生成 Protobuf 代码:
+    *   **Windows**:
+        可以直接运行脚本，脚本会自动检测工程目录下的 `tools/protoc` 或系统环境变量。
+        ```cmd
+        .\scripts\proto_gen.bat
+        ```
+    *   **Linux/Mac**:
+        ```bash
+        ./scripts/proto_gen.sh
+        ```
+
+4.  依赖注入 (可选):
+    如果修改 took `wire.go`，需要重新生成 `wire_gen.go`：
     ```bash
-    # 确保已安装 protoc-gen-go
-    ./scripts/proto_gen.sh
+    go install github.com/google/wire/cmd/wire@latest
+    wire ./cmd/gateway
+    wire ./cmd/portal
     ```
 
-4.  运行服务 (开发模式):
+5.  运行服务 (开发模式):
     ```bash
     go run cmd/world/main.go
     go run cmd/gateway/main.go

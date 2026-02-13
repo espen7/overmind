@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package gateway;
+
+option go_package = "overmind/pkg/pb/gateway";
+
+// MsgType 定义
+// 范围: 1000 - 1999 用于网关/登录相关消息
+enum MsgType {
+    NONE = 0;
+    HEARTBEAT = 1000;
+    HANDSHAKE_REQ = 1001;
+    HANDSHAKE_RESP = 1002;
+    LOGIN_REQ = 1003;    // 转发给 Portal
+    LOGIN_RESP = 1004;   // 从 Portal 转发
+    ENTER_GAME_REQ = 1005;
+    ENTER_GAME_RESP = 1006;
+    KICK_NOTIFY = 1007;
+}
+
+// Internal: Session 详情，从 Gateway 发送给 Portal/Game
+message SessionState {
+    int64 session_id = 1;
+    string client_ip = 2;
+    int64 connect_time = 3;
+}
+
+message Heartbeat {
+    int64 client_time = 1;
+}
+
+message HandshakeReq {
+    string app_id = 1;
+    string version = 2;
+    string device_id = 3;
+}
+
+message HandshakeResp {
+    int32 rt = 1;
+    string server_time = 2;
+    bytes session_key = 3; // 初始 AES 密钥 / Token
+}
+
+message LoginReq {
+    string app_id = 1;
+    string device_id = 2;
+    string token = 3;
+}
+
+message LoginResp {
+    int32 rt = 1;
+    string token = 2;
+    string player_id = 3;
+}
+
+message EnterGameReq {
+    string player_id = 1;
+}
+
+message EnterGameResp {
+    int32 rt = 1;
+}
+
+message KickNotify {
+    int32 reason = 1;
+}
