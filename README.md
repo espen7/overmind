@@ -67,7 +67,7 @@ Following the Standard Go Project Layout:
 
 1.  Clone the repository:
     ```bash
-    git clone https://github.com/your-org/overmind.git
+    git clone https://github.com/espen7/overmind.git
     cd overmind
     ```
 

@@ -67,7 +67,7 @@ Overmind 是一个专为大规模并发和高可扩展性设计的分布式游�
 
 1.  克隆仓库:
     ```bash
-    git clone https://github.com/your-org/overmind.git
+    git clone https://github.com/espen7/overmind.git
     cd overmind
     ```
 
