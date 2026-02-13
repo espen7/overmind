@@ -28,5 +28,27 @@ go.work.sum
 .env
 
 # Editor/IDE
-# .idea/
-# .vscode/
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+/bin/
+/dist/
+main
+
+# Logs
+*.log
+logs/
+
+# Wire
+# wire_gen.go
+
+# Proto
+# Generated proto files are usually committed, but if you want to ignore them:
+# pkg/pb/
