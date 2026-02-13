@@ -1,6 +1,6 @@
 # Overmind
 
-A high-performance SLG (Simulation Game) server framework written in Go, powered by [ProtoActor](https://github.com/asynkron/protoactor-go).
+A high-performance game server framework written in Go, powered by [ProtoActor](https://github.com/asynkron/protoactor-go).
 
 ## Overview
 

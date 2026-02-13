@@ -1,6 +1,6 @@
 # Overmind
 
-基于 Go 语言的高性能 SLG (仿真策略) 游戏服务器框架，由 [ProtoActor](https://github.com/asynkron/protoactor-go) 驱动。
+基于 Go 语言的高性能游戏服务器框架，由 [ProtoActor](https://github.com/asynkron/protoactor-go) 驱动。
 
 ## 概览
 
