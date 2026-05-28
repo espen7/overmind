@@ -7,10 +7,23 @@ services:
     name: "portal"
     host: "127.0.0.1"
     port: 8081
+  player:
+    name: "player"
+    host: "127.0.0.1"
+    port: 8082
   world:
     name: "world"
     host: "127.0.0.1"
-    port: 8082
+    port: 8083
+
+actor:
+  system: "overmind"
+  host: "127.0.0.1"
+  port: 9001
+
+mongo:
+  uri: "mongodb://127.0.0.1:27017"
+  database: "overmind"
 
 world:
   scene:

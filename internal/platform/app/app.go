@@ -27,7 +27,19 @@ func (s ServiceConfig) Address() string {
 type Services struct {
 	Gateway ServiceConfig `mapstructure:"gateway"`
 	Portal  ServiceConfig `mapstructure:"portal"`
+	Player  ServiceConfig `mapstructure:"player"`
 	World   ServiceConfig `mapstructure:"world"`
+}
+
+type ActorConfig struct {
+	System string `mapstructure:"system"`
+	Host   string `mapstructure:"host"`
+	Port   int    `mapstructure:"port"`
+}
+
+type MongoConfig struct {
+	URI      string `mapstructure:"uri"`
+	Database string `mapstructure:"database"`
 }
 
 type SceneConfig struct {
@@ -47,6 +59,8 @@ type LogConfig struct {
 
 type Config struct {
 	Services Services           `mapstructure:"services"`
+	Actor    ActorConfig        `mapstructure:"actor"`
+	Mongo    MongoConfig        `mapstructure:"mongo"`
 	World    WorldRuntimeConfig `mapstructure:"world"`
 	Log      LogConfig          `mapstructure:"log"`
 }
@@ -68,8 +82,23 @@ func (c Config) Validate() error {
 	if err := check("portal", c.Services.Portal); err != nil {
 		return err
 	}
+	if err := check("player", c.Services.Player); err != nil {
+		return err
+	}
 	if err := check("world", c.Services.World); err != nil {
 		return err
+	}
+	if c.Actor.System == "" {
+		return fmt.Errorf("actor.system is required")
+	}
+	if c.Actor.Port <= 0 {
+		return fmt.Errorf("actor.port must be positive")
+	}
+	if c.Mongo.URI == "" {
+		return fmt.Errorf("mongo.uri is required")
+	}
+	if c.Mongo.Database == "" {
+		return fmt.Errorf("mongo.database is required")
 	}
 	if c.World.Scene.CellSize <= 0 {
 		return fmt.Errorf("world.scene.cell_size must be positive")
