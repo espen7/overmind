@@ -1,6 +1,6 @@
 # Overmind
 
-一个使用 Go 编写的轻量级 MMO 游戏服务器实验项目。
+一个使用 Go 编写的 SLG 游戏服务器。
 
 这个分支参考了 `mengfangtan/mmo-game-server` 的核心拆分方式，但只保留首阶段真正需要的能力，明确不包含监控和运维体系。
 
