@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package auth;
+package portal;
 
-option go_package = "overmind/pkg/pb/auth;authpb";
+option go_package = "overmind/pkg/pb/portal;portalpb";
 
 message LoginRequest {
   string username = 1;

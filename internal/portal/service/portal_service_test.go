@@ -3,7 +3,7 @@ package service
 import (
 	"testing"
 
-	"overmind/internal/auth/repository"
+	"overmind/internal/portal/repository"
 )
 
 func TestLoginReturnsTokenAndPlayer(t *testing.T) {

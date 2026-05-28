@@ -10,13 +10,13 @@ import (
 	"github.com/gorilla/websocket"
 	"google.golang.org/protobuf/proto"
 
-	authpb "overmind/pkg/pb/auth"
 	gamepb "overmind/pkg/pb/game"
+	portalpb "overmind/pkg/pb/portal"
 
-	authtransport "overmind/internal/auth/transport"
 	"overmind/internal/game/transport"
 	"overmind/internal/gateway/protocol"
 	"overmind/internal/platform/logging"
+	portaltransport "overmind/internal/portal/transport"
 )
 
 type client struct {
@@ -26,13 +26,13 @@ type client struct {
 }
 
 type WSServer struct {
-	addr        string
-	authHandler *authtransport.Handler
-	gameHandler *transport.Handler
-	httpServer  *http.Server
-	clients     sync.Map
-	players     sync.Map
-	nextID      uint64
+	addr          string
+	portalHandler *portaltransport.Handler
+	gameHandler   *transport.Handler
+	httpServer    *http.Server
+	clients       sync.Map
+	players       sync.Map
+	nextID        uint64
 }
 
 var upgrader = websocket.Upgrader{
@@ -43,11 +43,11 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func NewWSServer(addr string, authHandler *authtransport.Handler, gameHandler *transport.Handler) *WSServer {
+func NewWSServer(addr string, portalHandler *portaltransport.Handler, gameHandler *transport.Handler) *WSServer {
 	return &WSServer{
-		addr:        addr,
-		authHandler: authHandler,
-		gameHandler: gameHandler,
+		addr:          addr,
+		portalHandler: portalHandler,
+		gameHandler:   gameHandler,
 	}
 }
 
@@ -124,11 +124,11 @@ func (s *WSServer) serveWS(w http.ResponseWriter, r *http.Request) {
 func (s *WSServer) handlePacket(currentClient *client, packet protocol.Packet) error {
 	switch packet.Type {
 	case protocol.MessageTypeLoginRequest:
-		var req authpb.LoginRequest
+		var req portalpb.LoginRequest
 		if err := proto.Unmarshal(packet.Payload, &req); err != nil {
 			return err
 		}
-		resp, err := s.authHandler.Login(&req)
+		resp, err := s.portalHandler.Login(&req)
 		if err != nil {
 			return err
 		}

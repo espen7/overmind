@@ -11,7 +11,7 @@ The user explicitly asked for a full rewrite on a new branch and delegated desig
 1. Replace the current ProtoActor-centric design with a simpler service-oriented architecture.
 2. Deliver a runnable first phase with three core services:
    - `gateway`: WebSocket connection management and client message routing
-   - `auth`: login, token/session validation, player identity summary
+   - `portal`: login, token/session validation, player identity summary
    - `game`: scene runtime, AOI broadcasting, and basic combat
 3. Provide a protocol and package layout that can grow into more MMO subsystems later.
 4. Keep the first phase lightweight enough to compile and run locally without external ops infrastructure.
@@ -37,7 +37,7 @@ Why not now:
 
 ### Option B: Lightweight full rewrite
 
-Rebuild the runtime around `gateway`, `auth`, and `game`, using simple Go services and domain modules instead of trying to keep ProtoActor as the center of the system.
+Rebuild the runtime around `gateway`, `portal`, and `game`, using simple Go services and domain modules instead of trying to keep ProtoActor as the center of the system.
 
 Why this is recommended:
 - Closest to the reference project's successful boundaries without importing its entire stack
@@ -61,9 +61,9 @@ Why not now:
 - Accept WebSocket clients
 - Decode and encode protobuf messages
 - Manage connection lifecycle, heartbeats, and session binding
-- Forward authenticated gameplay requests to `auth` or `game`
+- Forward authenticated gameplay requests to `portal` or `game`
 
-`cmd/auth`
+`cmd/portal`
 - Handle login and reconnect validation
 - Issue and verify session tokens
 - Return lightweight player profile and spawn metadata
@@ -78,7 +78,7 @@ Future services such as `home` or `admin` are intentionally removed from phase o
 ### Package layout
 
 `api/proto`
-- Source protobuf definitions for auth and game messages
+- Source protobuf definitions for portal and game messages
 
 `pkg/pb`
 - Generated protobuf code
@@ -93,7 +93,7 @@ Future services such as `home` or `admin` are intentionally removed from phase o
 - `transport`: websocket server, codec, session registry
 - `service`: gateway routing and connection-facing use cases
 
-`internal/auth`
+`internal/portal`
 - `domain`: account, token, player summary models
 - `service`: login and validation use cases
 - `repository`: phase-one in-memory account/player store
@@ -114,8 +114,8 @@ This structure intentionally borrows the reference repository's domain/service/r
 
 1. The client connects to `gateway` over WebSocket.
 2. `gateway` performs handshake and heartbeat tracking.
-3. Login requests are routed to `auth`.
-4. `auth` validates credentials, returns a session token, player ID, and default scene entry data.
+3. Login requests are routed to `portal`.
+4. `portal` validates credentials, returns a session token, player ID, and default scene entry data.
 5. `gateway` binds the session to the authenticated player.
 6. Enter-scene and gameplay messages are routed to `game`.
 7. `game` loads or creates the player entity, places it into a scene, updates AOI visibility, and emits enter/leave/snapshot events.
@@ -150,7 +150,7 @@ For phase one, service-to-service calls can remain in-process package calls or t
 ## Error Handling
 
 - Transport errors stay in `gateway` and result in clean session teardown
-- Auth and gameplay failures return explicit protobuf error responses with stable error codes
+- Portal and gameplay failures return explicit protobuf error responses with stable error codes
 - Domain services return typed errors instead of leaking transport or storage details
 - Invalid scene or combat commands are rejected without crashing the scene loop
 - Logs should capture connection ID, player ID, message type, and error code where available
@@ -166,7 +166,7 @@ For phase one, service-to-service calls can remain in-process package calls or t
 
 ### Service-level verification
 
-- `gateway`, `auth`, and `game` compile independently
+- `gateway`, `portal`, and `game` compile independently
 - A smoke flow verifies login, scene entry, movement, and one attack round
 
 The first implementation pass should prefer deterministic tests around AOI and combat because those are the most behavior-dense parts of the rewrite.
@@ -176,11 +176,11 @@ The first implementation pass should prefer deterministic tests around AOI and c
 1. Create a new branch for the rewrite.
 2. Remove or replace the old `portal/world/home/admin` skeletons.
 3. Introduce the new package layout and shared bootstrap code.
-4. Define protobuf messages for auth and scene/combat flow.
+4. Define protobuf messages for portal and scene/combat flow.
 5. Implement gateway transport and session binding.
-6. Implement auth service with in-memory repository.
+6. Implement portal service with in-memory repository.
 7. Implement game scene manager, AOI, and combat service.
-8. Add tests for AOI, auth token flow, and combat calculation.
+8. Add tests for AOI, portal token flow, and combat calculation.
 9. Run build and smoke verification.
 
 ## Risks and Mitigations

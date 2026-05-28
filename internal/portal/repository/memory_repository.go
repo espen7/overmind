@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"overmind/internal/auth/domain"
+	"overmind/internal/portal/domain"
 )
 
 type MemoryRepository struct {

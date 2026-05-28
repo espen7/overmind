@@ -7,19 +7,19 @@ This branch rewrites the original skeleton around three core services inspired b
 ## Phase-One Scope
 
 - `gateway`: WebSocket access, packet framing, session binding
-- `auth`: local login flow and session token issuance
+- `portal`: login entry, token issuance, and pre-game entry context
 - `game`: scene entry, AOI visibility, and basic combat
 
 ## Current Layout
 
 ```text
 cmd/
-  auth/      # auth service entrypoint
+  portal/    # portal service entrypoint
   game/      # game service entrypoint
   gateway/   # websocket gateway entrypoint
 
 internal/
-  auth/      # auth domain, repository, service, transport
+  portal/    # portal domain, repository, service, transport
   game/      # scene, combat, world state, transport
   gateway/   # websocket transport and binary packet framing
   platform/  # config, logging, lifecycle helpers
@@ -29,7 +29,7 @@ pkg/
   pb/        # generated protobuf code
 
 api/proto/
-  auth/      # auth protobuf contracts
+  portal/    # portal protobuf contracts
   game/      # game protobuf contracts
 ```
 
@@ -57,7 +57,7 @@ go test ./...
 ### Start services
 
 ```powershell
-go run ./cmd/auth
+go run ./cmd/portal
 go run ./cmd/game
 go run ./cmd/gateway
 ```

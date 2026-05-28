@@ -7,19 +7,19 @@
 ## 第一阶段范围
 
 - `gateway`：WebSocket 接入、消息包编解码、会话绑定
-- `auth`：本地登录流程、会话令牌签发
+- `portal`：登录入口、令牌签发、进图前上下文分发
 - `game`：场景进入、AOI 可见性、基础战斗
 
 ## 当前目录
 
 ```text
 cmd/
-  auth/      # 认证服务入口
+  portal/    # 门户服务入口
   game/      # 游戏服务入口
   gateway/   # WebSocket 网关入口
 
 internal/
-  auth/      # 认证领域、仓储、服务、传输层
+  portal/    # 门户领域、仓储、服务、传输层
   game/      # 场景、战斗、世界状态、传输层
   gateway/   # WebSocket 传输与二进制包协议
   platform/  # 配置、日志、启动辅助
@@ -29,7 +29,7 @@ pkg/
   pb/        # Protobuf 生成代码
 
 api/proto/
-  auth/      # 认证协议
+  portal/    # 门户协议
   game/      # 场景与战斗协议
 ```
 
@@ -57,7 +57,7 @@ go test ./...
 ### 启动服务
 
 ```powershell
-go run ./cmd/auth
+go run ./cmd/portal
 go run ./cmd/game
 go run ./cmd/gateway
 ```

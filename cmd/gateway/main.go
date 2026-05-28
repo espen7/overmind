@@ -4,9 +4,6 @@ import (
 	"context"
 	"log"
 
-	authrepo "overmind/internal/auth/repository"
-	authservice "overmind/internal/auth/service"
-	authtransport "overmind/internal/auth/transport"
 	gamerepo "overmind/internal/game/repository"
 	gameservice "overmind/internal/game/service"
 	gametransport "overmind/internal/game/transport"
@@ -14,6 +11,9 @@ import (
 	"overmind/internal/platform/app"
 	platformconfig "overmind/internal/platform/config"
 	"overmind/internal/platform/logging"
+	portalrepo "overmind/internal/portal/repository"
+	portalservice "overmind/internal/portal/service"
+	portaltransport "overmind/internal/portal/transport"
 )
 
 func main() {
@@ -24,8 +24,8 @@ func main() {
 
 	logging.Init(cfg.Log.Level, cfg.Log.Encoding)
 
-	authRepository := authrepo.NewMemoryRepository()
-	authHandler := authtransport.NewHandler(authservice.New(authRepository))
+	portalRepository := portalrepo.NewMemoryRepository()
+	portalHandler := portaltransport.NewHandler(portalservice.New(portalRepository))
 
 	world := gamerepo.NewMemoryWorld()
 	gameHandler := gametransport.NewHandler(
@@ -34,7 +34,7 @@ func main() {
 		world,
 	)
 
-	server := gatewaynet.NewWSServer(cfg.Services.Gateway.Address(), authHandler, gameHandler)
+	server := gatewaynet.NewWSServer(cfg.Services.Gateway.Address(), portalHandler, gameHandler)
 	logging.L().Info("gateway service starting", logging.String("addr", cfg.Services.Gateway.Address()))
 	if err := app.RunServer(context.Background(), server); err != nil {
 		log.Fatal(err)

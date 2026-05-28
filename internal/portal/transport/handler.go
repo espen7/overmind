@@ -1,28 +1,28 @@
 package transport
 
 import (
-	"overmind/internal/auth/service"
-	authpb "overmind/pkg/pb/auth"
+	"overmind/internal/portal/service"
+	portalpb "overmind/pkg/pb/portal"
 )
 
 type Handler struct {
-	service *service.AuthService
+	service *service.PortalService
 }
 
-func NewHandler(s *service.AuthService) *Handler {
+func NewHandler(s *service.PortalService) *Handler {
 	return &Handler{service: s}
 }
 
-func (h *Handler) Login(req *authpb.LoginRequest) (*authpb.LoginResponse, error) {
+func (h *Handler) Login(req *portalpb.LoginRequest) (*portalpb.LoginResponse, error) {
 	result, err := h.service.Login(req.GetUsername(), req.GetPassword())
 	if err != nil {
-		return &authpb.LoginResponse{
+		return &portalpb.LoginResponse{
 			ErrorCode:    401,
 			ErrorMessage: err.Error(),
 		}, nil
 	}
 
-	return &authpb.LoginResponse{
+	return &portalpb.LoginResponse{
 		Token:      result.Token,
 		PlayerId:   result.PlayerID,
 		PlayerName: result.PlayerName,

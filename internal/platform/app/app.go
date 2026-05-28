@@ -26,7 +26,7 @@ func (s ServiceConfig) Address() string {
 
 type Services struct {
 	Gateway ServiceConfig `mapstructure:"gateway"`
-	Auth    ServiceConfig `mapstructure:"auth"`
+	Portal  ServiceConfig `mapstructure:"portal"`
 	Game    ServiceConfig `mapstructure:"game"`
 }
 
@@ -65,7 +65,7 @@ func (c Config) Validate() error {
 	if err := check("gateway", c.Services.Gateway); err != nil {
 		return err
 	}
-	if err := check("auth", c.Services.Auth); err != nil {
+	if err := check("portal", c.Services.Portal); err != nil {
 		return err
 	}
 	if err := check("game", c.Services.Game); err != nil {

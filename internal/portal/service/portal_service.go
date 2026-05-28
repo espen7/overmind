@@ -5,17 +5,13 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"overmind/internal/auth/domain"
+	"overmind/internal/portal/domain"
 )
 
 type authRepository interface {
 	FindAccount(username string) (domain.Account, error)
 	SaveToken(token string, account domain.Account)
 	FindByToken(token string) (domain.Account, error)
-}
-
-type AuthService struct {
-	repo authRepository
 }
 
 type LoginResult struct {
@@ -27,11 +23,15 @@ type LoginResult struct {
 	Y          int32
 }
 
-func New(repo authRepository) *AuthService {
-	return &AuthService{repo: repo}
+type PortalService struct {
+	repo authRepository
 }
 
-func (s *AuthService) Login(username string, password string) (LoginResult, error) {
+func New(repo authRepository) *PortalService {
+	return &PortalService{repo: repo}
+}
+
+func (s *PortalService) Login(username string, password string) (LoginResult, error) {
 	account, err := s.repo.FindAccount(username)
 	if err != nil {
 		return LoginResult{}, err
@@ -58,6 +58,6 @@ func (s *AuthService) Login(username string, password string) (LoginResult, erro
 	}, nil
 }
 
-func (s *AuthService) Validate(token string) (domain.Account, error) {
+func (s *PortalService) Validate(token string) (domain.Account, error) {
 	return s.repo.FindByToken(token)
 }

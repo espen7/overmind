@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Rebuild `overmind` around `gateway`, `auth`, and `game` services with login, scene entry, AOI visibility, and basic combat, while explicitly excluding monitoring and ops features.
+**Goal:** Rebuild `overmind` around `gateway`, `portal`, and `game` services with login, scene entry, AOI visibility, and basic combat, while explicitly excluding monitoring and ops features.
 
-**Architecture:** Replace the current ProtoActor-centered skeleton with a lightweight service layout. Keep boundaries explicit by separating shared bootstrap utilities, protocol definitions, auth logic, game logic, and gateway transport so later RPC or cluster adapters can be added without rewriting domain code.
+**Architecture:** Replace the current ProtoActor-centered skeleton with a lightweight service layout. Keep boundaries explicit by separating shared bootstrap utilities, protocol definitions, portal logic, game logic, and gateway transport so later RPC or cluster adapters can be added without rewriting domain code.
 
 **Tech Stack:** Go 1.25, Gorilla WebSocket, Protobuf, Viper, Zap, in-memory repositories, table-driven Go tests
 
@@ -14,18 +14,18 @@
 
 ### Create
 
-- `cmd/auth/main.go`
+- `cmd/portal/main.go`
 - `cmd/game/main.go`
-- `api/proto/auth/auth.proto`
+- `api/proto/portal/portal.proto`
 - `api/proto/game/game.proto`
 - `internal/platform/app/app.go`
 - `internal/platform/config/config.go`
 - `internal/platform/logging/logging.go`
 - `internal/platform/clock/clock.go`
-- `internal/auth/domain/account.go`
-- `internal/auth/service/auth_service.go`
-- `internal/auth/repository/memory_repository.go`
-- `internal/auth/transport/handler.go`
+- `internal/portal/domain/account.go`
+- `internal/portal/service/portal_service.go`
+- `internal/portal/repository/memory_repository.go`
+- `internal/portal/transport/handler.go`
 - `internal/game/domain/entity.go`
 - `internal/game/domain/scene.go`
 - `internal/game/service/scene_service.go`
@@ -35,7 +35,7 @@
 - `internal/game/transport/handler.go`
 - `pkg/aoi/grid.go`
 - `pkg/aoi/grid_test.go`
-- `internal/auth/service/auth_service_test.go`
+- `internal/portal/service/portal_service_test.go`
 - `internal/game/service/combat_service_test.go`
 - `internal/game/service/scene_service_test.go`
 
@@ -66,7 +66,7 @@
 ## Task 1: Replace the old startup skeleton with the new service layout
 
 **Files:**
-- Create: `cmd/auth/main.go`, `cmd/game/main.go`, `internal/platform/app/app.go`, `internal/platform/config/config.go`, `internal/platform/logging/logging.go`, `internal/platform/clock/clock.go`
+- Create: `cmd/portal/main.go`, `cmd/game/main.go`, `internal/platform/app/app.go`, `internal/platform/config/config.go`, `internal/platform/logging/logging.go`, `internal/platform/clock/clock.go`
 - Modify: `cmd/gateway/main.go`, `configs/config.yaml`
 - Remove or Replace: `cmd/portal/main.go`, `cmd/world/main.go`, `cmd/home/main.go`, `cmd/admin/main.go`
 - Test: `go test ./internal/platform/...`
@@ -105,7 +105,7 @@ type ServiceConfig struct {
 
 type Config struct {
 	Gateway ServiceConfig
-	Auth    ServiceConfig
+	Portal  ServiceConfig
 	Game    ServiceConfig
 }
 
@@ -113,8 +113,8 @@ func (c Config) Validate() error {
 	if c.Gateway.Name == "" || c.Gateway.Port == 0 {
 		return fmt.Errorf("gateway config is required")
 	}
-	if c.Auth.Name == "" || c.Auth.Port == 0 {
-		return fmt.Errorf("auth config is required")
+	if c.Portal.Name == "" || c.Portal.Port == 0 {
+		return fmt.Errorf("portal config is required")
 	}
 	if c.Game.Name == "" || c.Game.Port == 0 {
 		return fmt.Errorf("game config is required")
@@ -140,7 +140,7 @@ func main() {
 		log.Fatal(err)
 	}
 	logging.Init(cfg.Log.Level)
-	logging.L().Info("auth service starting")
+	logging.L().Info("portal service starting")
 }
 ```
 
@@ -151,8 +151,8 @@ services:
   gateway:
     name: "gateway"
     port: 8080
-  auth:
-    name: "auth"
+  portal:
+    name: "portal"
     port: 8081
   game:
     name: "game"
@@ -177,14 +177,14 @@ Expected: PASS for platform package tests and all commands compile
 - [ ] **Step 7: Commit**
 
 ```bash
-git add cmd/auth/main.go cmd/game/main.go cmd/gateway/main.go configs/config.yaml internal/platform
+git add cmd/portal/main.go cmd/game/main.go cmd/gateway/main.go configs/config.yaml internal/platform
 git commit -m "refactor: rebuild service bootstrap layout"
 ```
 
 ## Task 2: Define protobuf contracts and gateway packet framing
 
 **Files:**
-- Create: `api/proto/auth/auth.proto`, `api/proto/game/game.proto`
+- Create: `api/proto/portal/portal.proto`, `api/proto/game/game.proto`
 - Modify: `scripts/proto_gen.bat`, `scripts/proto_gen.sh`, `internal/gateway/protocol/packet.go`, `go.mod`
 - Test: `go test ./internal/gateway/protocol/...`
 
@@ -213,14 +213,14 @@ func TestPacketRoundTrip(t *testing.T) {
 Run: `go test ./internal/gateway/protocol/...`
 Expected: FAIL with `undefined: Packet`, `Encode`, or `Decode`
 
-- [ ] **Step 3: Define auth and game protobufs**
+- [ ] **Step 3: Define portal and game protobufs**
 
 ```proto
 syntax = "proto3";
 
-package auth;
+package portal;
 
-option go_package = "overmind/pkg/pb/auth;authpb";
+option go_package = "overmind/pkg/pb/portal;portalpb";
 
 message LoginRequest {
   string username = 1;
@@ -300,7 +300,7 @@ func Decode(data []byte) (Packet, error) {
 - [ ] **Step 5: Regenerate protobuf code**
 
 Run: `./scripts/proto_gen.sh` on Unix or `.\scripts\proto_gen.bat` on Windows
-Expected: `pkg/pb/auth` and `pkg/pb/game` generated without errors
+Expected: `pkg/pb/portal` and `pkg/pb/game` generated without errors
 
 - [ ] **Step 6: Run tests**
 
@@ -311,16 +311,16 @@ Expected: PASS with packet round-trip green
 
 ```bash
 git add api/proto scripts/proto_gen.bat scripts/proto_gen.sh internal/gateway/protocol/packet.go pkg/pb
-git commit -m "feat: define auth and game wire protocol"
+git commit -m "feat: define portal and game wire protocol"
 ```
 
-## Task 3: Build auth service with in-memory accounts and session tokens
+## Task 3: Build portal service with in-memory accounts and session tokens
 
 **Files:**
-- Create: `internal/auth/domain/account.go`, `internal/auth/service/auth_service.go`, `internal/auth/repository/memory_repository.go`, `internal/auth/transport/handler.go`, `internal/auth/service/auth_service_test.go`
-- Test: `internal/auth/service/auth_service_test.go`
+- Create: `internal/portal/domain/account.go`, `internal/portal/service/portal_service.go`, `internal/portal/repository/memory_repository.go`, `internal/portal/transport/handler.go`, `internal/portal/service/portal_service_test.go`
+- Test: `internal/portal/service/portal_service_test.go`
 
-- [ ] **Step 1: Write the failing auth service tests**
+- [ ] **Step 1: Write the failing portal service tests**
 
 ```go
 package service
@@ -328,7 +328,7 @@ package service
 import "testing"
 
 func TestLoginReturnsTokenAndPlayer(t *testing.T) {
-	svc := NewAuthService(NewMemoryRepository())
+	svc := New(NewMemoryRepository())
 	resp, err := svc.Login("demo", "demo")
 	if err != nil {
 		t.Fatalf("login returned error: %v", err)
@@ -339,7 +339,7 @@ func TestLoginReturnsTokenAndPlayer(t *testing.T) {
 }
 
 func TestValidateRejectsUnknownToken(t *testing.T) {
-	svc := NewAuthService(NewMemoryRepository())
+	svc := New(NewMemoryRepository())
 	if _, err := svc.Validate("missing"); err == nil {
 		t.Fatal("expected validate to fail for unknown token")
 	}
@@ -348,10 +348,10 @@ func TestValidateRejectsUnknownToken(t *testing.T) {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `go test ./internal/auth/service -run TestLoginReturnsTokenAndPlayer -v`
-Expected: FAIL with `undefined: NewAuthService` or `NewMemoryRepository`
+Run: `go test ./internal/portal/service -run TestLoginReturnsTokenAndPlayer -v`
+Expected: FAIL with `undefined: New` or `NewMemoryRepository`
 
-- [ ] **Step 3: Implement minimal auth domain and repository**
+- [ ] **Step 3: Implement minimal portal domain and repository**
 
 ```go
 package domain
@@ -385,7 +385,7 @@ func NewMemoryRepository() *MemoryRepository {
 }
 ```
 
-- [ ] **Step 4: Implement auth service behavior**
+- [ ] **Step 4: Implement portal service behavior**
 
 ```go
 package service
@@ -405,7 +405,7 @@ type LoginResult struct {
 	Y          int32
 }
 
-func (s *AuthService) Login(username, password string) (LoginResult, error) {
+func (s *PortalService) Login(username, password string) (LoginResult, error) {
 	account, err := s.repo.FindAccount(username)
 	if err != nil || account.Password != password {
 		return LoginResult{}, fmt.Errorf("invalid credentials")
@@ -426,14 +426,14 @@ func (s *AuthService) Login(username, password string) (LoginResult, error) {
 ```go
 package transport
 
-import authpb "overmind/pkg/pb/auth"
+import portalpb "overmind/pkg/pb/portal"
 
-func (h Handler) Login(req *authpb.LoginRequest) (*authpb.LoginResponse, error) {
+func (h Handler) Login(req *portalpb.LoginRequest) (*portalpb.LoginResponse, error) {
 	result, err := h.service.Login(req.GetUsername(), req.GetPassword())
 	if err != nil {
-		return &authpb.LoginResponse{ErrorCode: 401, ErrorMessage: err.Error()}, nil
+		return &portalpb.LoginResponse{ErrorCode: 401, ErrorMessage: err.Error()}, nil
 	}
-	return &authpb.LoginResponse{
+	return &portalpb.LoginResponse{
 		Token: result.Token, PlayerId: result.PlayerID, PlayerName: result.PlayerName,
 		SceneId: result.SceneID, X: result.X, Y: result.Y,
 	}, nil
@@ -442,14 +442,14 @@ func (h Handler) Login(req *authpb.LoginRequest) (*authpb.LoginResponse, error) 
 
 - [ ] **Step 6: Run tests**
 
-Run: `go test ./internal/auth/...`
+Run: `go test ./internal/portal/...`
 Expected: PASS with both login and token validation tests green
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add internal/auth
-git commit -m "feat: add in-memory auth service"
+git add internal/portal
+git commit -m "feat: add in-memory portal service"
 ```
 
 ## Task 4: Implement AOI scene management and basic combat with tests first
@@ -589,7 +589,7 @@ git commit -m "feat: add scene aoi and combat services"
 
 **Files:**
 - Modify: `cmd/gateway/main.go`, `internal/gateway/net/server.go`, `internal/gateway/net/ws_server.go`, `internal/gateway/protocol/packet.go`
-- Create: `internal/auth/transport/handler.go`, `internal/game/transport/handler.go`
+- Create: `internal/portal/transport/handler.go`, `internal/game/transport/handler.go`
 - Test: `go test ./...`
 
 - [ ] **Step 1: Write the failing gateway session test**
@@ -632,16 +632,16 @@ func (s *Session) Bind(playerID int64, token string) {
 func (s *Session) PlayerID() int64 { return s.playerID }
 ```
 
-- [ ] **Step 4: Hook gateway requests to auth and game handlers**
+- [ ] **Step 4: Hook gateway requests to portal and game handlers**
 
 ```go
 switch packet.Type {
 case MessageTypeLogin:
-	var req authpb.LoginRequest
+	var req portalpb.LoginRequest
 	if err := proto.Unmarshal(packet.Payload, &req); err != nil {
 		return err
 	}
-	resp, err := g.authHandler.Login(&req)
+	resp, err := g.portalHandler.Login(&req)
 	if err != nil {
 		return err
 	}
@@ -661,19 +661,19 @@ case MessageTypeAttack:
 Run: `go test ./...`
 Expected: PASS
 
-Run: `go build ./cmd/gateway ./cmd/auth ./cmd/game`
+Run: `go build ./cmd/gateway ./cmd/portal ./cmd/game`
 Expected: PASS with three binaries built successfully
 
 - [ ] **Step 6: Smoke test the local flow**
 
-Run: `go run ./cmd/auth` in one terminal, `go run ./cmd/game` in a second, and `go run ./cmd/gateway` in a third
+Run: `go run ./cmd/portal` in one terminal, `go run ./cmd/game` in a second, and `go run ./cmd/gateway` in a third
 Expected: all three services start cleanly with no panic and log their listening ports
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add cmd/gateway internal/gateway internal/auth/transport internal/game/transport
-git commit -m "feat: wire gateway auth and game flow"
+git add cmd/gateway internal/gateway internal/portal/transport internal/game/transport
+git commit -m "feat: wire gateway portal and game flow"
 ```
 
 ## Self-Review Checklist
@@ -681,7 +681,7 @@ git commit -m "feat: wire gateway auth and game flow"
 - Spec coverage:
   - service split: Tasks 1 and 5
   - protobuf and protocol: Task 2
-  - auth login/session flow: Task 3
+  - portal login/session flow: Task 3
   - scene entry, AOI, combat: Task 4
   - verification: Task 5
 - Placeholder scan:
