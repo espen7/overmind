@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package game;
+
+option go_package = "overmind/pkg/pb/game;gamepb";
+
+message Player {
+  int64 id = 1;
+  string name = 2;
+  int64 scene_id = 3;
+  int32 x = 4;
+  int32 y = 5;
+}
+
+message Monster {
+  int64 id = 1;
+  string name = 2;
+  int64 scene_id = 3;
+  int32 hp = 4;
+  int32 max_hp = 5;
+  int32 x = 6;
+  int32 y = 7;
+  bool dead = 8;
+}
+
+message EnterSceneRequest {}
+
+message SceneSnapshot {
+  int64 scene_id = 1;
+  Player self = 2;
+  repeated Player players = 3;
+  repeated Monster monsters = 4;
+}
+
+message MoveRequest {
+  int32 x = 1;
+  int32 y = 2;
+}
+
+message MoveBroadcast {
+  int64 player_id = 1;
+  int64 scene_id = 2;
+  int32 x = 3;
+  int32 y = 4;
+}
+
+message AttackRequest {
+  int64 target_id = 1;
+}
+
+message CombatBroadcast {
+  int64 attacker_id = 1;
+  int64 target_id = 2;
+  int64 scene_id = 3;
+  int32 damage = 4;
+  int32 target_hp = 5;
+  bool dead = 6;
+}
+
+message ErrorResponse {
+  int32 error_code = 1;
+  string error_message = 2;
+}

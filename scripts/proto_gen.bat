@@ -4,6 +4,8 @@ setlocal
 :: Ensure output directories exist
 if not exist "pkg\pb\kit" mkdir "pkg\pb\kit"
 if not exist "pkg\pb\gateway" mkdir "pkg\pb\gateway"
+if not exist "pkg\pb\auth" mkdir "pkg\pb\auth"
+if not exist "pkg\pb\game" mkdir "pkg\pb\game"
 
 echo Generating Protobuf files...
 
@@ -46,8 +48,16 @@ cd api\proto\gateway
 for %%f in (*.proto) do call set "PROTO_FILES=%%PROTO_FILES%% api/proto/gateway/%%f"
 cd ..\..\..
 
+cd api\proto\auth
+for %%f in (*.proto) do call set "PROTO_FILES=%%PROTO_FILES%% api/proto/auth/%%f"
+cd ..\..\..
+
+cd api\proto\game
+for %%f in (*.proto) do call set "PROTO_FILES=%%PROTO_FILES%% api/proto/game/%%f"
+cd ..\..\..
+
 if "%PROTO_FILES%"=="" (
-    echo Error: No .proto files found in api\proto\kit or api\proto\gateway.
+    echo Error: No .proto files found in api\proto directories.
     exit /b 1
 )
 
@@ -66,6 +76,12 @@ if exist "api\proto\kit\*.pb.go" (
 )
 if exist "api\proto\gateway\*.pb.go" (
     move /Y "api\proto\gateway\*.pb.go" "pkg\pb\gateway\" >nul
+)
+if exist "api\proto\auth\*.pb.go" (
+    move /Y "api\proto\auth\*.pb.go" "pkg\pb\auth\" >nul
+)
+if exist "api\proto\game\*.pb.go" (
+    move /Y "api\proto\game\*.pb.go" "pkg\pb\game\" >nul
 )
 
 echo Protobuf generation complete.

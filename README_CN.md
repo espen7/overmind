@@ -1,118 +1,73 @@
 # Overmind
 
-基于 Go 语言的高性能游戏服务器框架，由 [ProtoActor](https://github.com/asynkron/protoactor-go) 驱动。
+一个使用 Go 编写的轻量级 MMO 游戏服务器实验项目。
 
-## 概览
+这个分支参考了 `mengfangtan/mmo-game-server` 的核心拆分方式，但只保留首阶段真正需要的能力，明确不包含监控和运维体系。
 
-Overmind 是一个专为大规模并发和高可扩展性设计的分布式游戏服务器框架，典型的应用场景为 4X/SLG 策略游戏。它利用 Actor 模型来管理游戏状态和逻辑，避免了传统多线程开发中复杂的锁机制。
+## 第一阶段范围
 
-### 核心特性
+- `gateway`：WebSocket 接入、消息包编解码、会话绑定
+- `auth`：本地登录流程、会话令牌签发
+- `game`：场景进入、AOI 可见性、基础战斗
 
-*   **分布式架构**: 基于 ProtoActor Cluster 构建，支持游戏世界无缝水平扩展。
-*   **BigWorld 空间管理**:
-    *   **WorldActor (Space)**: 代表一个完整的游戏地图实例，管理全局状态和广播。
-    *   **CellActor (Chunk)**: 处理空间分片 (Cell) 内的实体管理（如行军部队、资源点）。
-    *   **无缝切换 (Seamless Handover)**: 高效处理实体在不同 Cell 之间的所有权转移。
-*   **高性能网关**: 
-    *   采用 IO (Goroutine) 与 逻辑 (ChannelActor) 分离的设计。
-    *   使用二进制 WebSocket 协议，内置 AES 加密和 CRC 校验。
-*   **消息网格 (Message Mesh)**:
-    *   **EdgeLetter**: 处理客户端与服务器之间的业务通信。
-    *   **MeshLetter**: 处理内部服务之间的控制指令（如停服、重载配置）。
-    *   **Envelope**: 标准化的消息容器，支持全链路追踪 (Tracing)。
-
-## 目录结构
-
-遵循标准 Go 项目布局 (Standard Go Project Layout):
+## 当前目录
 
 ```text
-/
-├── cmd/                # 微服务入口
-│   ├── gateway/        # 网关服务 (处理 WS/TCP 连接)
-│   ├── portal/         # 门户服务 (认证、入口、账号管理)
-│   ├── admin/          # 管理后台/GM 后端
-│   ├── world/          # 世界服 (BigWorld 空间管理)
-│   └── home/           # 家园服 (玩家内城、科技、背包)
-│
-├── internal/           # 私有应用代码
-│   ├── cluster/        # ProtoActor 集群配置
-│   ├── gateway/        # 网关逻辑 (NetIO, ChannelActor)
-│   ├── game/           # 核心游戏逻辑 (World, Home)
-│   ├── infra/          # 基础设施适配器 (DB, Redis)
-│   └── kit/            # 内部通用工具 (配置, 监控)
-│
-├── pkg/                # 可导出的公共库
-│   └── pb/             # 生成的 Protobuf 代码
-│
-├── api/                # API 定义
-│   └── proto/          # Protobuf 源文件 (.proto)
-│       ├── kit/        # Envelope 信封 & 通用消息
-│       ├── gateway/    # 握手 & 心跳协议
-│       └── game/       # 游戏玩法协议
-│
-└── configs/            # 配置文件
+cmd/
+  auth/      # 认证服务入口
+  game/      # 游戏服务入口
+  gateway/   # WebSocket 网关入口
+
+internal/
+  auth/      # 认证领域、仓储、服务、传输层
+  game/      # 场景、战斗、世界状态、传输层
+  gateway/   # WebSocket 传输与二进制包协议
+  platform/  # 配置、日志、启动辅助
+
+pkg/
+  aoi/       # 独立 AOI 网格实现
+  pb/        # Protobuf 生成代码
+
+api/proto/
+  auth/      # 认证协议
+  game/      # 场景与战斗协议
 ```
 
-## 快速开始
+## 当前明确不做
 
-### 前置要求
+- 监控、告警、Tracing、运维面板
+- 跨服通信、服务发现、集群编排
+- 家园/主城玩法、后台管理、GM 工具
+- 依赖数据库的完整持久化成长体系
 
-*   Go 1.22+
-*   Protoc Compiler (Protobuf 编译器)
-*   Consul (用于集群服务发现)
-*   Redis
-*   MySQL/PostgreSQL
+## 本地开发
 
-### 安装步骤
+### 生成 protobuf
 
-1.  克隆仓库:
-    ```bash
-    git clone https://github.com/espen7/overmind.git
-    cd overmind
-    ```
+```powershell
+.\scripts\proto_gen.bat
+```
 
-2.  下载依赖:
-    ```bash
-    go mod download
-    ```
+### 运行测试
 
-3.  生成 Protobuf 代码:
-    *   **Windows**:
-        可以直接运行脚本，脚本会自动检测工程目录下的 `tools/protoc` 或系统环境变量。
-        ```cmd
-        .\scripts\proto_gen.bat
-        ```
-    *   **Linux/Mac**:
-        ```bash
-        ./scripts/proto_gen.sh
-        ```
+```powershell
+go test ./...
+```
 
-4.  依赖注入 (可选):
-    如果修改 took `wire.go`，需要重新生成 `wire_gen.go`：
-    ```bash
-    go install github.com/google/wire/cmd/wire@latest
-    wire ./cmd/gateway
-    wire ./cmd/portal
-    ```
+### 启动服务
 
-5.  运行服务 (开发模式):
-    ```bash
-    go run cmd/world/main.go
-    go run cmd/gateway/main.go
-    ```
+```powershell
+go run ./cmd/auth
+go run ./cmd/game
+go run ./cmd/gateway
+```
 
-## 架构详情
+健康检查地址：
 
-### 网关设计 (Gateway Design)
-网关采用 **每连接 1 Goroutine + 1 Actor** 的模型：
-*   **Goroutine**: 负责阻塞式的 `ReadMessage`，以及 CRC 校验和 AES 解密。
-*   **ChannelActor**: 负责维护会话状态 (Session State)、处理心跳，并通过 ProtoActor 将消息路由到后端集群。
+- `http://127.0.0.1:8081/healthz`
+- `http://127.0.0.1:8082/healthz`
+- `http://127.0.0.1:8080/healthz`
 
-### 通信模式 (Communication Pattern)
-*   所有服务间通信都封装在 **Envelope** (信封) 中。
-*   **EdgeLetter**: 承载客户端业务数据 (`MsgType` + `Body`)。
-*   **MeshLetter**: 承载系统控制命令 (`Reload`, `Shutdown`)。
+## 说明
 
-## 许可证
-
-MIT
+当前实现保持了服务边界，但仓储仍然是内存版，服务之间也以本地进程内接线为主，目标是先把登录、进图、AOI 和基础战斗链路稳定跑通。

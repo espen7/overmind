@@ -1,12 +1,22 @@
-server:
-  name: "overmind-gateway"
-  port: 8080
-  env: "dev"
+services:
+  gateway:
+    name: "gateway"
+    host: "127.0.0.1"
+    port: 8080
+  auth:
+    name: "auth"
+    host: "127.0.0.1"
+    port: 8081
+  game:
+    name: "game"
+    host: "127.0.0.1"
+    port: 8082
 
-redis:
-  addr: "localhost:6379"
-  password: ""
-  db: 0
+game:
+  scene:
+    width: 1000
+    height: 1000
+    cell_size: 100
 
 log:
   level: "debug"
