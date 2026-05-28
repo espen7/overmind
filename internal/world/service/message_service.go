@@ -1,14 +1,14 @@
 package service
 
 import (
-	"overmind/internal/game/domain"
-	gamepb "overmind/pkg/pb/game"
+	"overmind/internal/world/domain"
+	worldpb "overmind/pkg/pb/world"
 )
 
-func BuildSnapshot(result domain.EnterResult) *gamepb.SceneSnapshot {
-	players := make([]*gamepb.Player, 0, len(result.VisiblePlayers))
+func BuildSnapshot(result domain.EnterResult) *worldpb.SceneSnapshot {
+	players := make([]*worldpb.Player, 0, len(result.VisiblePlayers))
 	for _, player := range result.VisiblePlayers {
-		players = append(players, &gamepb.Player{
+		players = append(players, &worldpb.Player{
 			Id:      player.ID,
 			Name:    player.Name,
 			SceneId: player.SceneID,
@@ -17,9 +17,9 @@ func BuildSnapshot(result domain.EnterResult) *gamepb.SceneSnapshot {
 		})
 	}
 
-	monsters := make([]*gamepb.Monster, 0, len(result.VisibleMonsters))
+	monsters := make([]*worldpb.Monster, 0, len(result.VisibleMonsters))
 	for _, monster := range result.VisibleMonsters {
-		monsters = append(monsters, &gamepb.Monster{
+		monsters = append(monsters, &worldpb.Monster{
 			Id:      monster.ID,
 			Name:    monster.Name,
 			SceneId: monster.SceneID,
@@ -31,9 +31,9 @@ func BuildSnapshot(result domain.EnterResult) *gamepb.SceneSnapshot {
 		})
 	}
 
-	return &gamepb.SceneSnapshot{
+	return &worldpb.SceneSnapshot{
 		SceneId: result.SceneID,
-		Self: &gamepb.Player{
+		Self: &worldpb.Player{
 			Id:      result.Self.ID,
 			Name:    result.Self.Name,
 			SceneId: result.Self.SceneID,
@@ -45,8 +45,8 @@ func BuildSnapshot(result domain.EnterResult) *gamepb.SceneSnapshot {
 	}
 }
 
-func BuildMoveBroadcast(result domain.MoveResult) *gamepb.MoveBroadcast {
-	return &gamepb.MoveBroadcast{
+func BuildMoveBroadcast(result domain.MoveResult) *worldpb.MoveBroadcast {
+	return &worldpb.MoveBroadcast{
 		PlayerId: result.Player.ID,
 		SceneId:  result.SceneID,
 		X:        result.Player.X,
@@ -54,8 +54,8 @@ func BuildMoveBroadcast(result domain.MoveResult) *gamepb.MoveBroadcast {
 	}
 }
 
-func BuildCombatBroadcast(result domain.AttackResult) *gamepb.CombatBroadcast {
-	return &gamepb.CombatBroadcast{
+func BuildCombatBroadcast(result domain.AttackResult) *worldpb.CombatBroadcast {
+	return &worldpb.CombatBroadcast{
 		AttackerId: result.AttackerID,
 		TargetId:   result.TargetID,
 		SceneId:    result.SceneID,

@@ -10,13 +10,12 @@ import (
 	"github.com/gorilla/websocket"
 	"google.golang.org/protobuf/proto"
 
-	gamepb "overmind/pkg/pb/game"
-	portalpb "overmind/pkg/pb/portal"
-
-	"overmind/internal/game/transport"
 	"overmind/internal/gateway/protocol"
 	"overmind/internal/platform/logging"
 	portaltransport "overmind/internal/portal/transport"
+	worldtransport "overmind/internal/world/transport"
+	portalpb "overmind/pkg/pb/portal"
+	worldpb "overmind/pkg/pb/world"
 )
 
 type client struct {
@@ -28,7 +27,7 @@ type client struct {
 type WSServer struct {
 	addr          string
 	portalHandler *portaltransport.Handler
-	gameHandler   *transport.Handler
+	worldHandler  *worldtransport.Handler
 	httpServer    *http.Server
 	clients       sync.Map
 	players       sync.Map
@@ -43,11 +42,11 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func NewWSServer(addr string, portalHandler *portaltransport.Handler, gameHandler *transport.Handler) *WSServer {
+func NewWSServer(addr string, portalHandler *portaltransport.Handler, worldHandler *worldtransport.Handler) *WSServer {
 	return &WSServer{
 		addr:          addr,
 		portalHandler: portalHandler,
-		gameHandler:   gameHandler,
+		worldHandler:  worldHandler,
 	}
 }
 
@@ -80,6 +79,7 @@ func (s *WSServer) Stop(ctx context.Context) error {
 	return s.httpServer.Shutdown(ctx)
 }
 
+// serveWS owns a single client connection from upgrade to disconnect.
 func (s *WSServer) serveWS(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -113,7 +113,7 @@ func (s *WSServer) serveWS(w http.ResponseWriter, r *http.Request) {
 		}
 		if err := s.handlePacket(currentClient, packet); err != nil {
 			logging.L().Warn("handle packet failed", logging.String("error", err.Error()))
-			_ = s.writeProto(currentClient, protocol.MessageTypeErrorResponse, &gamepb.ErrorResponse{
+			_ = s.writeProto(currentClient, protocol.MessageTypeErrorResponse, &worldpb.ErrorResponse{
 				ErrorCode:    500,
 				ErrorMessage: err.Error(),
 			})
@@ -121,6 +121,7 @@ func (s *WSServer) serveWS(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handlePacket keeps the gateway thin: decode, dispatch, and write back.
 func (s *WSServer) handlePacket(currentClient *client, packet protocol.Packet) error {
 	switch packet.Type {
 	case protocol.MessageTypeLoginRequest:
@@ -140,7 +141,7 @@ func (s *WSServer) handlePacket(currentClient *client, packet protocol.Packet) e
 		return s.writeProto(currentClient, protocol.MessageTypeLoginResponse, resp)
 	case protocol.MessageTypeEnterScene:
 		x, y := currentClient.session.Spawn()
-		outbound, err := s.gameHandler.EnterScene(
+		outbound, err := s.worldHandler.EnterScene(
 			currentClient.session.PlayerID(),
 			currentClient.session.PlayerName(),
 			currentClient.session.SceneID(),
@@ -152,21 +153,21 @@ func (s *WSServer) handlePacket(currentClient *client, packet protocol.Packet) e
 		}
 		return s.broadcast(outbound)
 	case protocol.MessageTypeMoveRequest:
-		var req gamepb.MoveRequest
+		var req worldpb.MoveRequest
 		if err := proto.Unmarshal(packet.Payload, &req); err != nil {
 			return err
 		}
-		outbound, err := s.gameHandler.Move(currentClient.session.PlayerID(), &req)
+		outbound, err := s.worldHandler.Move(currentClient.session.PlayerID(), &req)
 		if err != nil {
 			return err
 		}
 		return s.broadcast(outbound)
 	case protocol.MessageTypeAttackRequest:
-		var req gamepb.AttackRequest
+		var req worldpb.AttackRequest
 		if err := proto.Unmarshal(packet.Payload, &req); err != nil {
 			return err
 		}
-		outbound, err := s.gameHandler.Attack(currentClient.session.PlayerID(), &req)
+		outbound, err := s.worldHandler.Attack(currentClient.session.PlayerID(), &req)
 		if err != nil {
 			return err
 		}
@@ -176,7 +177,8 @@ func (s *WSServer) handlePacket(currentClient *client, packet protocol.Packet) e
 	}
 }
 
-func (s *WSServer) broadcast(messages []transport.Outbound) error {
+// broadcast fans a world event out to every visible player still connected.
+func (s *WSServer) broadcast(messages []worldtransport.Outbound) error {
 	for _, message := range messages {
 		for _, recipient := range message.Recipients {
 			value, ok := s.players.Load(recipient)

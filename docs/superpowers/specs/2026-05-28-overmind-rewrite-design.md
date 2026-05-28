@@ -12,7 +12,7 @@ The user explicitly asked for a full rewrite on a new branch and delegated desig
 2. Deliver a runnable first phase with three core services:
    - `gateway`: WebSocket connection management and client message routing
    - `portal`: login, token/session validation, player identity summary
-   - `game`: scene runtime, AOI broadcasting, and basic combat
+   - `world`: scene runtime, AOI broadcasting, and basic combat
 3. Provide a protocol and package layout that can grow into more MMO subsystems later.
 4. Keep the first phase lightweight enough to compile and run locally without external ops infrastructure.
 
@@ -37,7 +37,7 @@ Why not now:
 
 ### Option B: Lightweight full rewrite
 
-Rebuild the runtime around `gateway`, `portal`, and `game`, using simple Go services and domain modules instead of trying to keep ProtoActor as the center of the system.
+Rebuild the runtime around `gateway`, `portal`, and `world`, using simple Go services and domain modules instead of trying to keep ProtoActor as the center of the system.
 
 Why this is recommended:
 - Closest to the reference project's successful boundaries without importing its entire stack
@@ -61,14 +61,14 @@ Why not now:
 - Accept WebSocket clients
 - Decode and encode protobuf messages
 - Manage connection lifecycle, heartbeats, and session binding
-- Forward authenticated gameplay requests to `portal` or `game`
+- Forward authenticated gameplay requests to `portal` or `world`
 
 `cmd/portal`
 - Handle login and reconnect validation
 - Issue and verify session tokens
 - Return lightweight player profile and spawn metadata
 
-`cmd/game`
+`cmd/world`
 - Own scene state, AOI membership, and entity simulation
 - Process move, enter-scene, and attack commands
 - Broadcast scene events back through gateway-facing responses
@@ -78,7 +78,7 @@ Future services such as `home` or `admin` are intentionally removed from phase o
 ### Package layout
 
 `api/proto`
-- Source protobuf definitions for portal and game messages
+- Source protobuf definitions for portal and world messages
 
 `pkg/pb`
 - Generated protobuf code
@@ -99,7 +99,7 @@ Future services such as `home` or `admin` are intentionally removed from phase o
 - `repository`: phase-one in-memory account/player store
 - `transport`: handlers callable from gateway
 
-`internal/game`
+`internal/world`
 - `domain`: player, monster, scene, position, combat stats
 - `service`: scene manager, AOI service, combat service
 - `repository`: phase-one in-memory player and world state support
@@ -117,8 +117,8 @@ This structure intentionally borrows the reference repository's domain/service/r
 3. Login requests are routed to `portal`.
 4. `portal` validates credentials, returns a session token, player ID, and default scene entry data.
 5. `gateway` binds the session to the authenticated player.
-6. Enter-scene and gameplay messages are routed to `game`.
-7. `game` loads or creates the player entity, places it into a scene, updates AOI visibility, and emits enter/leave/snapshot events.
+6. Enter-scene and gameplay messages are routed to `world`.
+7. `world` loads or creates the player entity, places it into a scene, updates AOI visibility, and emits enter/leave/snapshot events.
 8. Move and attack commands mutate scene state and produce broadcast events for nearby players.
 9. `gateway` encodes outbound events and pushes them to subscribed client sessions.
 
@@ -166,7 +166,7 @@ For phase one, service-to-service calls can remain in-process package calls or t
 
 ### Service-level verification
 
-- `gateway`, `portal`, and `game` compile independently
+- `gateway`, `portal`, and `world` compile independently
 - A smoke flow verifies login, scene entry, movement, and one attack round
 
 The first implementation pass should prefer deterministic tests around AOI and combat because those are the most behavior-dense parts of the rewrite.
@@ -179,7 +179,7 @@ The first implementation pass should prefer deterministic tests around AOI and c
 4. Define protobuf messages for portal and scene/combat flow.
 5. Implement gateway transport and session binding.
 6. Implement portal service with in-memory repository.
-7. Implement game scene manager, AOI, and combat service.
+7. Implement world scene manager, AOI, and combat service.
 8. Add tests for AOI, portal token flow, and combat calculation.
 9. Run build and smoke verification.
 

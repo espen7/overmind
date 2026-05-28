@@ -3,10 +3,10 @@ package transport
 import (
 	"google.golang.org/protobuf/proto"
 
-	"overmind/internal/game/repository"
-	"overmind/internal/game/service"
 	"overmind/internal/gateway/protocol"
-	gamepb "overmind/pkg/pb/game"
+	"overmind/internal/world/repository"
+	"overmind/internal/world/service"
+	worldpb "overmind/pkg/pb/world"
 )
 
 type Outbound struct {
@@ -15,6 +15,7 @@ type Outbound struct {
 	Message    proto.Message
 }
 
+// Handler adapts world-domain operations into outbound gateway events.
 type Handler struct {
 	scene  *service.SceneService
 	combat *service.CombatService
@@ -41,7 +42,7 @@ func (h *Handler) EnterScene(playerID int64, name string, sceneID int64, x int32
 	}}, nil
 }
 
-func (h *Handler) Move(playerID int64, req *gamepb.MoveRequest) ([]Outbound, error) {
+func (h *Handler) Move(playerID int64, req *worldpb.MoveRequest) ([]Outbound, error) {
 	result, err := h.scene.Move(playerID, req.GetX(), req.GetY())
 	if err != nil {
 		return nil, err
@@ -57,7 +58,7 @@ func (h *Handler) Move(playerID int64, req *gamepb.MoveRequest) ([]Outbound, err
 	}}, nil
 }
 
-func (h *Handler) Attack(playerID int64, req *gamepb.AttackRequest) ([]Outbound, error) {
+func (h *Handler) Attack(playerID int64, req *worldpb.AttackRequest) ([]Outbound, error) {
 	player, err := h.world.Player(playerID)
 	if err != nil {
 		return nil, err

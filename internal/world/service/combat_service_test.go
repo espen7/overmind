@@ -3,7 +3,7 @@ package service
 import (
 	"testing"
 
-	"overmind/internal/game/repository"
+	"overmind/internal/world/repository"
 )
 
 func TestAttackReducesMonsterHPAndMarksDeath(t *testing.T) {

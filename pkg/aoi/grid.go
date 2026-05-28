@@ -28,6 +28,7 @@ func NewGrid(width int32, height int32, cellSize int32) *Grid {
 	}
 }
 
+// Upsert moves an entity between cells without forcing callers to delete first.
 func (g *Grid) Upsert(id int64, x int32, y int32) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -46,6 +47,7 @@ func (g *Grid) Upsert(id int64, x int32, y int32) {
 	g.cells[key][id] = struct{}{}
 }
 
+// VisibleTo returns every entity inside the caller's 3x3 neighboring cell area.
 func (g *Grid) VisibleTo(id int64) []int64 {
 	g.mu.RLock()
 	defer g.mu.RUnlock()

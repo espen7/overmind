@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Rebuild `overmind` around `gateway`, `portal`, and `game` services with login, scene entry, AOI visibility, and basic combat, while explicitly excluding monitoring and ops features.
+**Goal:** Rebuild `overmind` around `gateway`, `portal`, and `world` services with login, scene entry, AOI visibility, and basic combat, while explicitly excluding monitoring and ops features.
 
-**Architecture:** Replace the current ProtoActor-centered skeleton with a lightweight service layout. Keep boundaries explicit by separating shared bootstrap utilities, protocol definitions, portal logic, game logic, and gateway transport so later RPC or cluster adapters can be added without rewriting domain code.
+**Architecture:** Replace the current ProtoActor-centered skeleton with a lightweight service layout. Keep boundaries explicit by separating shared bootstrap utilities, protocol definitions, portal logic, world logic, and gateway transport so later RPC or cluster adapters can be added without rewriting domain code.
 
 **Tech Stack:** Go 1.25, Gorilla WebSocket, Protobuf, Viper, Zap, in-memory repositories, table-driven Go tests
 
@@ -15,9 +15,9 @@
 ### Create
 
 - `cmd/portal/main.go`
-- `cmd/game/main.go`
+- `cmd/world/main.go`
 - `api/proto/portal/portal.proto`
-- `api/proto/game/game.proto`
+- `api/proto/world/world.proto`
 - `internal/platform/app/app.go`
 - `internal/platform/config/config.go`
 - `internal/platform/logging/logging.go`
@@ -26,18 +26,18 @@
 - `internal/portal/service/portal_service.go`
 - `internal/portal/repository/memory_repository.go`
 - `internal/portal/transport/handler.go`
-- `internal/game/domain/entity.go`
-- `internal/game/domain/scene.go`
-- `internal/game/service/scene_service.go`
-- `internal/game/service/combat_service.go`
-- `internal/game/service/message_service.go`
-- `internal/game/repository/memory_world.go`
-- `internal/game/transport/handler.go`
+- `internal/world/domain/entity.go`
+- `internal/world/domain/scene.go`
+- `internal/world/service/scene_service.go`
+- `internal/world/service/combat_service.go`
+- `internal/world/service/message_service.go`
+- `internal/world/repository/memory_world.go`
+- `internal/world/transport/handler.go`
 - `pkg/aoi/grid.go`
 - `pkg/aoi/grid_test.go`
 - `internal/portal/service/portal_service_test.go`
-- `internal/game/service/combat_service_test.go`
-- `internal/game/service/scene_service_test.go`
+- `internal/world/service/combat_service_test.go`
+- `internal/world/service/scene_service_test.go`
 
 ### Modify
 
@@ -59,14 +59,14 @@
 - `cmd/home/main.go`
 - `cmd/admin/main.go`
 - `internal/portal/actor.go`
-- `internal/game/world/actor.go`
-- `internal/game/world/cell.go`
+- `internal/world/world/actor.go`
+- `internal/world/world/cell.go`
 - `internal/gateway/channel/actor.go`
 
 ## Task 1: Replace the old startup skeleton with the new service layout
 
 **Files:**
-- Create: `cmd/portal/main.go`, `cmd/game/main.go`, `internal/platform/app/app.go`, `internal/platform/config/config.go`, `internal/platform/logging/logging.go`, `internal/platform/clock/clock.go`
+- Create: `cmd/portal/main.go`, `cmd/world/main.go`, `internal/platform/app/app.go`, `internal/platform/config/config.go`, `internal/platform/logging/logging.go`, `internal/platform/clock/clock.go`
 - Modify: `cmd/gateway/main.go`, `configs/config.yaml`
 - Remove or Replace: `cmd/portal/main.go`, `cmd/world/main.go`, `cmd/home/main.go`, `cmd/admin/main.go`
 - Test: `go test ./internal/platform/...`
@@ -177,14 +177,14 @@ Expected: PASS for platform package tests and all commands compile
 - [ ] **Step 7: Commit**
 
 ```bash
-git add cmd/portal/main.go cmd/game/main.go cmd/gateway/main.go configs/config.yaml internal/platform
+git add cmd/portal/main.go cmd/world/main.go cmd/gateway/main.go configs/config.yaml internal/platform
 git commit -m "refactor: rebuild service bootstrap layout"
 ```
 
 ## Task 2: Define protobuf contracts and gateway packet framing
 
 **Files:**
-- Create: `api/proto/portal/portal.proto`, `api/proto/game/game.proto`
+- Create: `api/proto/portal/portal.proto`, `api/proto/world/world.proto`
 - Modify: `scripts/proto_gen.bat`, `scripts/proto_gen.sh`, `internal/gateway/protocol/packet.go`, `go.mod`
 - Test: `go test ./internal/gateway/protocol/...`
 
@@ -213,7 +213,7 @@ func TestPacketRoundTrip(t *testing.T) {
 Run: `go test ./internal/gateway/protocol/...`
 Expected: FAIL with `undefined: Packet`, `Encode`, or `Decode`
 
-- [ ] **Step 3: Define portal and game protobufs**
+- [ ] **Step 3: Define portal and world protobufs**
 
 ```proto
 syntax = "proto3";
@@ -242,9 +242,9 @@ message LoginResponse {
 ```proto
 syntax = "proto3";
 
-package game;
+package world;
 
-option go_package = "overmind/pkg/pb/game;gamepb";
+option go_package = "overmind/pkg/pb/world;worldpb";
 
 message EnterSceneRequest {}
 
@@ -300,7 +300,7 @@ func Decode(data []byte) (Packet, error) {
 - [ ] **Step 5: Regenerate protobuf code**
 
 Run: `./scripts/proto_gen.sh` on Unix or `.\scripts\proto_gen.bat` on Windows
-Expected: `pkg/pb/portal` and `pkg/pb/game` generated without errors
+Expected: `pkg/pb/portal` and `pkg/pb/world` generated without errors
 
 - [ ] **Step 6: Run tests**
 
@@ -311,7 +311,7 @@ Expected: PASS with packet round-trip green
 
 ```bash
 git add api/proto scripts/proto_gen.bat scripts/proto_gen.sh internal/gateway/protocol/packet.go pkg/pb
-git commit -m "feat: define portal and game wire protocol"
+git commit -m "feat: define portal and world wire protocol"
 ```
 
 ## Task 3: Build portal service with in-memory accounts and session tokens
@@ -455,8 +455,8 @@ git commit -m "feat: add in-memory portal service"
 ## Task 4: Implement AOI scene management and basic combat with tests first
 
 **Files:**
-- Create: `pkg/aoi/grid.go`, `pkg/aoi/grid_test.go`, `internal/game/domain/entity.go`, `internal/game/domain/scene.go`, `internal/game/service/scene_service.go`, `internal/game/service/combat_service.go`, `internal/game/service/message_service.go`, `internal/game/repository/memory_world.go`, `internal/game/service/combat_service_test.go`, `internal/game/service/scene_service_test.go`
-- Test: `pkg/aoi/grid_test.go`, `internal/game/service/scene_service_test.go`, `internal/game/service/combat_service_test.go`
+- Create: `pkg/aoi/grid.go`, `pkg/aoi/grid_test.go`, `internal/world/domain/entity.go`, `internal/world/domain/scene.go`, `internal/world/service/scene_service.go`, `internal/world/service/combat_service.go`, `internal/world/service/message_service.go`, `internal/world/repository/memory_world.go`, `internal/world/service/combat_service_test.go`, `internal/world/service/scene_service_test.go`
+- Test: `pkg/aoi/grid_test.go`, `internal/world/service/scene_service_test.go`, `internal/world/service/combat_service_test.go`
 
 - [ ] **Step 1: Write the failing AOI and combat tests**
 
@@ -497,7 +497,7 @@ func TestAttackReducesMonsterHPAndMarksDeath(t *testing.T) {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `go test ./pkg/aoi ./internal/game/service -v`
+Run: `go test ./pkg/aoi ./internal/world/service -v`
 Expected: FAIL with missing constructors and methods
 
 - [ ] **Step 3: Implement AOI grid**
@@ -562,12 +562,12 @@ func (s *CombatService) Attack(playerID, sceneID, targetID int64) (AttackResult,
 ```go
 package service
 
-import gamepb "overmind/pkg/pb/game"
+import worldpb "overmind/pkg/pb/world"
 
-func BuildMoveBroadcast(playerID int64, x, y int32) *gamepb.SceneEvent {
-	return &gamepb.SceneEvent{
-		Event: &gamepb.SceneEvent_Move{
-			Move: &gamepb.MoveBroadcast{PlayerId: playerID, X: x, Y: y},
+func BuildMoveBroadcast(playerID int64, x, y int32) *worldpb.SceneEvent {
+	return &worldpb.SceneEvent{
+		Event: &worldpb.SceneEvent_Move{
+			Move: &worldpb.MoveBroadcast{PlayerId: playerID, X: x, Y: y},
 		},
 	}
 }
@@ -575,13 +575,13 @@ func BuildMoveBroadcast(playerID int64, x, y int32) *gamepb.SceneEvent {
 
 - [ ] **Step 6: Run tests**
 
-Run: `go test ./pkg/aoi ./internal/game/...`
+Run: `go test ./pkg/aoi ./internal/world/...`
 Expected: PASS with AOI visibility, scene entry, and combat behavior covered
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add pkg/aoi internal/game
+git add pkg/aoi internal/world
 git commit -m "feat: add scene aoi and combat services"
 ```
 
@@ -589,7 +589,7 @@ git commit -m "feat: add scene aoi and combat services"
 
 **Files:**
 - Modify: `cmd/gateway/main.go`, `internal/gateway/net/server.go`, `internal/gateway/net/ws_server.go`, `internal/gateway/protocol/packet.go`
-- Create: `internal/portal/transport/handler.go`, `internal/game/transport/handler.go`
+- Create: `internal/portal/transport/handler.go`, `internal/world/transport/handler.go`
 - Test: `go test ./...`
 
 - [ ] **Step 1: Write the failing gateway session test**
@@ -632,7 +632,7 @@ func (s *Session) Bind(playerID int64, token string) {
 func (s *Session) PlayerID() int64 { return s.playerID }
 ```
 
-- [ ] **Step 4: Hook gateway requests to portal and game handlers**
+- [ ] **Step 4: Hook gateway requests to portal and world handlers**
 
 ```go
 switch packet.Type {
@@ -661,19 +661,19 @@ case MessageTypeAttack:
 Run: `go test ./...`
 Expected: PASS
 
-Run: `go build ./cmd/gateway ./cmd/portal ./cmd/game`
+Run: `go build ./cmd/gateway ./cmd/portal ./cmd/world`
 Expected: PASS with three binaries built successfully
 
 - [ ] **Step 6: Smoke test the local flow**
 
-Run: `go run ./cmd/portal` in one terminal, `go run ./cmd/game` in a second, and `go run ./cmd/gateway` in a third
+Run: `go run ./cmd/portal` in one terminal, `go run ./cmd/world` in a second, and `go run ./cmd/gateway` in a third
 Expected: all three services start cleanly with no panic and log their listening ports
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add cmd/gateway internal/gateway internal/portal/transport internal/game/transport
-git commit -m "feat: wire gateway portal and game flow"
+git add cmd/gateway internal/gateway internal/portal/transport internal/world/transport
+git commit -m "feat: wire gateway portal and world flow"
 ```
 
 ## Self-Review Checklist

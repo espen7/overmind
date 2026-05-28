@@ -1,6 +1,6 @@
 package service
 
-import "overmind/internal/game/domain"
+import "overmind/internal/world/domain"
 
 type sceneRepository interface {
 	UpsertPlayer(player domain.Player) domain.Player
@@ -18,6 +18,7 @@ func NewScene(world sceneRepository) *SceneService {
 	return &SceneService{world: world}
 }
 
+// Enter creates or refreshes the player projection inside the world scene.
 func (s *SceneService) Enter(playerID int64, name string, sceneID int64, x int32, y int32) (domain.EnterResult, error) {
 	player := s.world.UpsertPlayer(domain.Player{
 		ID:      playerID,
@@ -39,6 +40,7 @@ func (s *SceneService) Enter(playerID int64, name string, sceneID int64, x int32
 	}, nil
 }
 
+// Move updates the player position and recomputes the nearby visibility list.
 func (s *SceneService) Move(playerID int64, x int32, y int32) (domain.MoveResult, error) {
 	player, err := s.world.Player(playerID)
 	if err != nil {

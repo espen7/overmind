@@ -27,7 +27,7 @@ func (s ServiceConfig) Address() string {
 type Services struct {
 	Gateway ServiceConfig `mapstructure:"gateway"`
 	Portal  ServiceConfig `mapstructure:"portal"`
-	Game    ServiceConfig `mapstructure:"game"`
+	World   ServiceConfig `mapstructure:"world"`
 }
 
 type SceneConfig struct {
@@ -36,7 +36,7 @@ type SceneConfig struct {
 	CellSize int32 `mapstructure:"cell_size"`
 }
 
-type GameConfig struct {
+type WorldRuntimeConfig struct {
 	Scene SceneConfig `mapstructure:"scene"`
 }
 
@@ -46,9 +46,9 @@ type LogConfig struct {
 }
 
 type Config struct {
-	Services Services   `mapstructure:"services"`
-	Game     GameConfig `mapstructure:"game"`
-	Log      LogConfig  `mapstructure:"log"`
+	Services Services           `mapstructure:"services"`
+	World    WorldRuntimeConfig `mapstructure:"world"`
+	Log      LogConfig          `mapstructure:"log"`
 }
 
 func (c Config) Validate() error {
@@ -68,11 +68,11 @@ func (c Config) Validate() error {
 	if err := check("portal", c.Services.Portal); err != nil {
 		return err
 	}
-	if err := check("game", c.Services.Game); err != nil {
+	if err := check("world", c.Services.World); err != nil {
 		return err
 	}
-	if c.Game.Scene.CellSize <= 0 {
-		return fmt.Errorf("game.scene.cell_size must be positive")
+	if c.World.Scene.CellSize <= 0 {
+		return fmt.Errorf("world.scene.cell_size must be positive")
 	}
 	return nil
 }

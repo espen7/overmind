@@ -2,9 +2,9 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v3.5.1
-// source: api/proto/game/game.proto
+// source: api/proto/world/world.proto
 
-package gamepb
+package worldpb
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -34,7 +34,7 @@ type Player struct {
 
 func (x *Player) Reset() {
 	*x = Player{}
-	mi := &file_api_proto_game_game_proto_msgTypes[0]
+	mi := &file_api_proto_world_world_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -46,7 +46,7 @@ func (x *Player) String() string {
 func (*Player) ProtoMessage() {}
 
 func (x *Player) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_game_game_proto_msgTypes[0]
+	mi := &file_api_proto_world_world_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -59,7 +59,7 @@ func (x *Player) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Player.ProtoReflect.Descriptor instead.
 func (*Player) Descriptor() ([]byte, []int) {
-	return file_api_proto_game_game_proto_rawDescGZIP(), []int{0}
+	return file_api_proto_world_world_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Player) GetId() int64 {
@@ -113,7 +113,7 @@ type Monster struct {
 
 func (x *Monster) Reset() {
 	*x = Monster{}
-	mi := &file_api_proto_game_game_proto_msgTypes[1]
+	mi := &file_api_proto_world_world_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -125,7 +125,7 @@ func (x *Monster) String() string {
 func (*Monster) ProtoMessage() {}
 
 func (x *Monster) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_game_game_proto_msgTypes[1]
+	mi := &file_api_proto_world_world_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -138,7 +138,7 @@ func (x *Monster) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Monster.ProtoReflect.Descriptor instead.
 func (*Monster) Descriptor() ([]byte, []int) {
-	return file_api_proto_game_game_proto_rawDescGZIP(), []int{1}
+	return file_api_proto_world_world_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *Monster) GetId() int64 {
@@ -205,7 +205,7 @@ type EnterSceneRequest struct {
 
 func (x *EnterSceneRequest) Reset() {
 	*x = EnterSceneRequest{}
-	mi := &file_api_proto_game_game_proto_msgTypes[2]
+	mi := &file_api_proto_world_world_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -217,7 +217,7 @@ func (x *EnterSceneRequest) String() string {
 func (*EnterSceneRequest) ProtoMessage() {}
 
 func (x *EnterSceneRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_game_game_proto_msgTypes[2]
+	mi := &file_api_proto_world_world_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -230,7 +230,7 @@ func (x *EnterSceneRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnterSceneRequest.ProtoReflect.Descriptor instead.
 func (*EnterSceneRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_game_game_proto_rawDescGZIP(), []int{2}
+	return file_api_proto_world_world_proto_rawDescGZIP(), []int{2}
 }
 
 type SceneSnapshot struct {
@@ -245,7 +245,7 @@ type SceneSnapshot struct {
 
 func (x *SceneSnapshot) Reset() {
 	*x = SceneSnapshot{}
-	mi := &file_api_proto_game_game_proto_msgTypes[3]
+	mi := &file_api_proto_world_world_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -257,7 +257,7 @@ func (x *SceneSnapshot) String() string {
 func (*SceneSnapshot) ProtoMessage() {}
 
 func (x *SceneSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_game_game_proto_msgTypes[3]
+	mi := &file_api_proto_world_world_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -270,7 +270,7 @@ func (x *SceneSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SceneSnapshot.ProtoReflect.Descriptor instead.
 func (*SceneSnapshot) Descriptor() ([]byte, []int) {
-	return file_api_proto_game_game_proto_rawDescGZIP(), []int{3}
+	return file_api_proto_world_world_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *SceneSnapshot) GetSceneId() int64 {
@@ -311,7 +311,7 @@ type MoveRequest struct {
 
 func (x *MoveRequest) Reset() {
 	*x = MoveRequest{}
-	mi := &file_api_proto_game_game_proto_msgTypes[4]
+	mi := &file_api_proto_world_world_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -323,7 +323,7 @@ func (x *MoveRequest) String() string {
 func (*MoveRequest) ProtoMessage() {}
 
 func (x *MoveRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_game_game_proto_msgTypes[4]
+	mi := &file_api_proto_world_world_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -336,7 +336,7 @@ func (x *MoveRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MoveRequest.ProtoReflect.Descriptor instead.
 func (*MoveRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_game_game_proto_rawDescGZIP(), []int{4}
+	return file_api_proto_world_world_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *MoveRequest) GetX() int32 {
@@ -365,7 +365,7 @@ type MoveBroadcast struct {
 
 func (x *MoveBroadcast) Reset() {
 	*x = MoveBroadcast{}
-	mi := &file_api_proto_game_game_proto_msgTypes[5]
+	mi := &file_api_proto_world_world_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -377,7 +377,7 @@ func (x *MoveBroadcast) String() string {
 func (*MoveBroadcast) ProtoMessage() {}
 
 func (x *MoveBroadcast) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_game_game_proto_msgTypes[5]
+	mi := &file_api_proto_world_world_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -390,7 +390,7 @@ func (x *MoveBroadcast) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MoveBroadcast.ProtoReflect.Descriptor instead.
 func (*MoveBroadcast) Descriptor() ([]byte, []int) {
-	return file_api_proto_game_game_proto_rawDescGZIP(), []int{5}
+	return file_api_proto_world_world_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *MoveBroadcast) GetPlayerId() int64 {
@@ -430,7 +430,7 @@ type AttackRequest struct {
 
 func (x *AttackRequest) Reset() {
 	*x = AttackRequest{}
-	mi := &file_api_proto_game_game_proto_msgTypes[6]
+	mi := &file_api_proto_world_world_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -442,7 +442,7 @@ func (x *AttackRequest) String() string {
 func (*AttackRequest) ProtoMessage() {}
 
 func (x *AttackRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_game_game_proto_msgTypes[6]
+	mi := &file_api_proto_world_world_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -455,7 +455,7 @@ func (x *AttackRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttackRequest.ProtoReflect.Descriptor instead.
 func (*AttackRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_game_game_proto_rawDescGZIP(), []int{6}
+	return file_api_proto_world_world_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *AttackRequest) GetTargetId() int64 {
@@ -479,7 +479,7 @@ type CombatBroadcast struct {
 
 func (x *CombatBroadcast) Reset() {
 	*x = CombatBroadcast{}
-	mi := &file_api_proto_game_game_proto_msgTypes[7]
+	mi := &file_api_proto_world_world_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -491,7 +491,7 @@ func (x *CombatBroadcast) String() string {
 func (*CombatBroadcast) ProtoMessage() {}
 
 func (x *CombatBroadcast) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_game_game_proto_msgTypes[7]
+	mi := &file_api_proto_world_world_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -504,7 +504,7 @@ func (x *CombatBroadcast) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CombatBroadcast.ProtoReflect.Descriptor instead.
 func (*CombatBroadcast) Descriptor() ([]byte, []int) {
-	return file_api_proto_game_game_proto_rawDescGZIP(), []int{7}
+	return file_api_proto_world_world_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *CombatBroadcast) GetAttackerId() int64 {
@@ -559,7 +559,7 @@ type ErrorResponse struct {
 
 func (x *ErrorResponse) Reset() {
 	*x = ErrorResponse{}
-	mi := &file_api_proto_game_game_proto_msgTypes[8]
+	mi := &file_api_proto_world_world_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -571,7 +571,7 @@ func (x *ErrorResponse) String() string {
 func (*ErrorResponse) ProtoMessage() {}
 
 func (x *ErrorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_game_game_proto_msgTypes[8]
+	mi := &file_api_proto_world_world_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -584,7 +584,7 @@ func (x *ErrorResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ErrorResponse.ProtoReflect.Descriptor instead.
 func (*ErrorResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_game_game_proto_rawDescGZIP(), []int{8}
+	return file_api_proto_world_world_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ErrorResponse) GetErrorCode() int32 {
@@ -601,11 +601,11 @@ func (x *ErrorResponse) GetErrorMessage() string {
 	return ""
 }
 
-var File_api_proto_game_game_proto protoreflect.FileDescriptor
+var File_api_proto_world_world_proto protoreflect.FileDescriptor
 
-const file_api_proto_game_game_proto_rawDesc = "" +
+const file_api_proto_world_world_proto_rawDesc = "" +
 	"\n" +
-	"\x19api/proto/game/game.proto\x12\x04game\"c\n" +
+	"\x1bapi/proto/world/world.proto\x12\x05world\"c\n" +
 	"\x06Player\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x19\n" +
@@ -621,12 +621,12 @@ const file_api_proto_game_game_proto_rawDesc = "" +
 	"\x01x\x18\x06 \x01(\x05R\x01x\x12\f\n" +
 	"\x01y\x18\a \x01(\x05R\x01y\x12\x12\n" +
 	"\x04dead\x18\b \x01(\bR\x04dead\"\x13\n" +
-	"\x11EnterSceneRequest\"\x9f\x01\n" +
+	"\x11EnterSceneRequest\"\xa2\x01\n" +
 	"\rSceneSnapshot\x12\x19\n" +
-	"\bscene_id\x18\x01 \x01(\x03R\asceneId\x12 \n" +
-	"\x04self\x18\x02 \x01(\v2\f.game.PlayerR\x04self\x12&\n" +
-	"\aplayers\x18\x03 \x03(\v2\f.game.PlayerR\aplayers\x12)\n" +
-	"\bmonsters\x18\x04 \x03(\v2\r.game.MonsterR\bmonsters\")\n" +
+	"\bscene_id\x18\x01 \x01(\x03R\asceneId\x12!\n" +
+	"\x04self\x18\x02 \x01(\v2\r.world.PlayerR\x04self\x12'\n" +
+	"\aplayers\x18\x03 \x03(\v2\r.world.PlayerR\aplayers\x12*\n" +
+	"\bmonsters\x18\x04 \x03(\v2\x0e.world.MonsterR\bmonsters\")\n" +
 	"\vMoveRequest\x12\f\n" +
 	"\x01x\x18\x01 \x01(\x05R\x01x\x12\f\n" +
 	"\x01y\x18\x02 \x01(\x05R\x01y\"c\n" +
@@ -648,36 +648,36 @@ const file_api_proto_game_game_proto_rawDesc = "" +
 	"\rErrorResponse\x12\x1d\n" +
 	"\n" +
 	"error_code\x18\x01 \x01(\x05R\terrorCode\x12#\n" +
-	"\rerror_message\x18\x02 \x01(\tR\ferrorMessageB\x1dZ\x1bovermind/pkg/pb/game;gamepbb\x06proto3"
+	"\rerror_message\x18\x02 \x01(\tR\ferrorMessageB\x1fZ\x1dovermind/pkg/pb/world;worldpbb\x06proto3"
 
 var (
-	file_api_proto_game_game_proto_rawDescOnce sync.Once
-	file_api_proto_game_game_proto_rawDescData []byte
+	file_api_proto_world_world_proto_rawDescOnce sync.Once
+	file_api_proto_world_world_proto_rawDescData []byte
 )
 
-func file_api_proto_game_game_proto_rawDescGZIP() []byte {
-	file_api_proto_game_game_proto_rawDescOnce.Do(func() {
-		file_api_proto_game_game_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_api_proto_game_game_proto_rawDesc), len(file_api_proto_game_game_proto_rawDesc)))
+func file_api_proto_world_world_proto_rawDescGZIP() []byte {
+	file_api_proto_world_world_proto_rawDescOnce.Do(func() {
+		file_api_proto_world_world_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_api_proto_world_world_proto_rawDesc), len(file_api_proto_world_world_proto_rawDesc)))
 	})
-	return file_api_proto_game_game_proto_rawDescData
+	return file_api_proto_world_world_proto_rawDescData
 }
 
-var file_api_proto_game_game_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
-var file_api_proto_game_game_proto_goTypes = []any{
-	(*Player)(nil),            // 0: game.Player
-	(*Monster)(nil),           // 1: game.Monster
-	(*EnterSceneRequest)(nil), // 2: game.EnterSceneRequest
-	(*SceneSnapshot)(nil),     // 3: game.SceneSnapshot
-	(*MoveRequest)(nil),       // 4: game.MoveRequest
-	(*MoveBroadcast)(nil),     // 5: game.MoveBroadcast
-	(*AttackRequest)(nil),     // 6: game.AttackRequest
-	(*CombatBroadcast)(nil),   // 7: game.CombatBroadcast
-	(*ErrorResponse)(nil),     // 8: game.ErrorResponse
+var file_api_proto_world_world_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_api_proto_world_world_proto_goTypes = []any{
+	(*Player)(nil),            // 0: world.Player
+	(*Monster)(nil),           // 1: world.Monster
+	(*EnterSceneRequest)(nil), // 2: world.EnterSceneRequest
+	(*SceneSnapshot)(nil),     // 3: world.SceneSnapshot
+	(*MoveRequest)(nil),       // 4: world.MoveRequest
+	(*MoveBroadcast)(nil),     // 5: world.MoveBroadcast
+	(*AttackRequest)(nil),     // 6: world.AttackRequest
+	(*CombatBroadcast)(nil),   // 7: world.CombatBroadcast
+	(*ErrorResponse)(nil),     // 8: world.ErrorResponse
 }
-var file_api_proto_game_game_proto_depIdxs = []int32{
-	0, // 0: game.SceneSnapshot.self:type_name -> game.Player
-	0, // 1: game.SceneSnapshot.players:type_name -> game.Player
-	1, // 2: game.SceneSnapshot.monsters:type_name -> game.Monster
+var file_api_proto_world_world_proto_depIdxs = []int32{
+	0, // 0: world.SceneSnapshot.self:type_name -> world.Player
+	0, // 1: world.SceneSnapshot.players:type_name -> world.Player
+	1, // 2: world.SceneSnapshot.monsters:type_name -> world.Monster
 	3, // [3:3] is the sub-list for method output_type
 	3, // [3:3] is the sub-list for method input_type
 	3, // [3:3] is the sub-list for extension type_name
@@ -685,26 +685,26 @@ var file_api_proto_game_game_proto_depIdxs = []int32{
 	0, // [0:3] is the sub-list for field type_name
 }
 
-func init() { file_api_proto_game_game_proto_init() }
-func file_api_proto_game_game_proto_init() {
-	if File_api_proto_game_game_proto != nil {
+func init() { file_api_proto_world_world_proto_init() }
+func file_api_proto_world_world_proto_init() {
+	if File_api_proto_world_world_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_proto_game_game_proto_rawDesc), len(file_api_proto_game_game_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_proto_world_world_proto_rawDesc), len(file_api_proto_world_world_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_api_proto_game_game_proto_goTypes,
-		DependencyIndexes: file_api_proto_game_game_proto_depIdxs,
-		MessageInfos:      file_api_proto_game_game_proto_msgTypes,
+		GoTypes:           file_api_proto_world_world_proto_goTypes,
+		DependencyIndexes: file_api_proto_world_world_proto_depIdxs,
+		MessageInfos:      file_api_proto_world_world_proto_msgTypes,
 	}.Build()
-	File_api_proto_game_game_proto = out.File
-	file_api_proto_game_game_proto_goTypes = nil
-	file_api_proto_game_game_proto_depIdxs = nil
+	File_api_proto_world_world_proto = out.File
+	file_api_proto_world_world_proto_goTypes = nil
+	file_api_proto_world_world_proto_depIdxs = nil
 }

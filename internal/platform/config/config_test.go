@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestLoadReadsPortalServiceConfig(t *testing.T) {
+func TestLoadReadsPortalAndWorldServiceConfig(t *testing.T) {
 	dir := t.TempDir()
 	content := []byte(`
 services:
@@ -18,11 +18,11 @@ services:
     name: portal
     host: 127.0.0.1
     port: 8081
-  game:
-    name: game
+  world:
+    name: world
     host: 127.0.0.1
     port: 8082
-game:
+world:
   scene:
     width: 1000
     height: 1000
@@ -44,5 +44,11 @@ log:
 	}
 	if cfg.Services.Portal.Port != 8081 {
 		t.Fatalf("expected portal port 8081, got %d", cfg.Services.Portal.Port)
+	}
+	if cfg.Services.World.Name != "world" {
+		t.Fatalf("expected world service name, got %q", cfg.Services.World.Name)
+	}
+	if cfg.Services.World.Port != 8082 {
+		t.Fatalf("expected world port 8082, got %d", cfg.Services.World.Port)
 	}
 }

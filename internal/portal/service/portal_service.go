@@ -31,6 +31,7 @@ func New(repo authRepository) *PortalService {
 	return &PortalService{repo: repo}
 }
 
+// Login validates the local account and returns the spawn context used by gateway.
 func (s *PortalService) Login(username string, password string) (LoginResult, error) {
 	account, err := s.repo.FindAccount(username)
 	if err != nil {
@@ -58,6 +59,7 @@ func (s *PortalService) Login(username string, password string) (LoginResult, er
 	}, nil
 }
 
+// Validate keeps token lookup inside the portal boundary so gateway stays transport-only.
 func (s *PortalService) Validate(token string) (domain.Account, error) {
 	return s.repo.FindByToken(token)
 }

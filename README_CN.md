@@ -8,19 +8,19 @@
 
 - `gateway`：WebSocket 接入、消息包编解码、会话绑定
 - `portal`：登录入口、令牌签发、进图前上下文分发
-- `game`：场景进入、AOI 可见性、基础战斗
+- `world`：场景进入、AOI 可见性、基础战斗
 
 ## 当前目录
 
 ```text
 cmd/
   portal/    # 门户服务入口
-  game/      # 游戏服务入口
+  world/     # 世界服务入口
   gateway/   # WebSocket 网关入口
 
 internal/
   portal/    # 门户领域、仓储、服务、传输层
-  game/      # 场景、战斗、世界状态、传输层
+  world/     # 场景、战斗、世界状态、传输层
   gateway/   # WebSocket 传输与二进制包协议
   platform/  # 配置、日志、启动辅助
 
@@ -30,7 +30,7 @@ pkg/
 
 api/proto/
   portal/    # 门户协议
-  game/      # 场景与战斗协议
+  world/     # 场景与战斗协议
 ```
 
 ## 当前明确不做
@@ -58,7 +58,7 @@ go test ./...
 
 ```powershell
 go run ./cmd/portal
-go run ./cmd/game
+go run ./cmd/world
 go run ./cmd/gateway
 ```
 

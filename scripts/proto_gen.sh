@@ -5,7 +5,7 @@
 mkdir -p pkg/pb/kit
 mkdir -p pkg/pb/gateway
 mkdir -p pkg/pb/portal
-mkdir -p pkg/pb/game
+mkdir -p pkg/pb/world
 
 # Generate Proto files
 # Use M flag to rewrite imports if needed, but since we use go_package, it should be fine.
@@ -27,7 +27,7 @@ protoc -I=. \
        api/proto/kit/*.proto \
        api/proto/gateway/*.proto \
        api/proto/portal/*.proto \
-       api/proto/game/*.proto
+       api/proto/world/*.proto
 
 # Move generated files to pkg/pb
 # api/proto/kit/*.pb.go -> pkg/pb/kit/
@@ -36,6 +36,6 @@ protoc -I=. \
 mv api/proto/kit/*.pb.go pkg/pb/kit/
 mv api/proto/gateway/*.pb.go pkg/pb/gateway/
 mv api/proto/portal/*.pb.go pkg/pb/portal/
-mv api/proto/game/*.pb.go pkg/pb/game/
+mv api/proto/world/*.pb.go pkg/pb/world/
 
 echo "Protobuf generation complete (with move)."

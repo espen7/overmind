@@ -1,6 +1,6 @@
 package service
 
-import "overmind/internal/game/domain"
+import "overmind/internal/world/domain"
 
 type combatRepository interface {
 	FindMonster(sceneID int64, targetID int64) (domain.Monster, error)
@@ -15,6 +15,7 @@ func NewCombat(world combatRepository) *CombatService {
 	return &CombatService{world: world}
 }
 
+// Attack performs the simplest possible scene-local combat resolution for phase one.
 func (s *CombatService) Attack(playerID int64, sceneID int64, targetID int64) (domain.AttackResult, error) {
 	monster, err := s.world.FindMonster(sceneID, targetID)
 	if err != nil {
