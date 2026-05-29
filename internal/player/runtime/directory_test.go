@@ -35,6 +35,9 @@ func TestDirectoryReusesPlayerActorAndRespawnsAfterPassivation(t *testing.T) {
 	if first.GetId() != second.GetId() {
 		t.Fatalf("expected same actor pid, first=%s second=%s", first, second)
 	}
+	if directory.Count() != 1 {
+		t.Fatalf("expected one tracked player actor, got %d", directory.Count())
+	}
 
 	channelPID := system.Root.Spawn(protoactor.PropsFromFunc(func(ctx protoactor.Context) {}))
 	result, err := system.Root.RequestFuture(first, clustermsg.PlayerLoginReq{
@@ -52,10 +55,22 @@ func TestDirectoryReusesPlayerActorAndRespawnsAfterPassivation(t *testing.T) {
 	}
 
 	system.Root.Stop(channelPID)
-	time.Sleep(200 * time.Millisecond)
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if directory.Count() == 0 {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if directory.Count() != 0 {
+		t.Fatalf("expected directory to drop passivated actor, got %d entries", directory.Count())
+	}
 
 	third := directory.Resolve(1001)
-	if third.GetId() == first.GetId() {
-		t.Fatalf("expected passivated actor to respawn, got same pid %s", third)
+	if third == nil {
+		t.Fatal("expected directory to resolve player actor after passivation")
+	}
+	if directory.Count() != 1 {
+		t.Fatalf("expected respawned actor to be tracked again, got %d entries", directory.Count())
 	}
 }
