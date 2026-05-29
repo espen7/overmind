@@ -4,12 +4,15 @@ import (
 	"time"
 
 	protoactor "github.com/asynkron/protoactor-go/actor"
+
+	playerservice "overmind/internal/player/service"
 )
 
 type DataManager interface {
 	Init(system *protoactor.ActorSystem, self *protoactor.PID)
 	Tick()
 	Flush() bool
+	OnLogin(login playerservice.LoginResult)
 }
 
 type ManagerFactory func(playerID int64) DataManager
@@ -66,6 +69,12 @@ type playerInitialized struct{}
 
 func (playerInitialized) NotInfluenceReceiveTimeout() {}
 
+type playerInitializationFailed struct {
+	Reason string
+}
+
+func (playerInitializationFailed) NotInfluenceReceiveTimeout() {}
+
 type playerTick struct{}
 
 func (playerTick) NotInfluenceReceiveTimeout() {}
@@ -82,3 +91,5 @@ func (noopDataManager) Init(system *protoactor.ActorSystem, self *protoactor.PID
 func (noopDataManager) Tick() {}
 
 func (noopDataManager) Flush() bool { return true }
+
+func (noopDataManager) OnLogin(login playerservice.LoginResult) {}

@@ -30,6 +30,8 @@ func (immediateDataManager) Tick() {}
 
 func (immediateDataManager) Flush() bool { return true }
 
+func (immediateDataManager) OnLogin(login playerservice.LoginResult) {}
+
 func TestPlayerActorRebindsChannelAndExpiresOldOne(t *testing.T) {
 	system := protoactor.NewActorSystem()
 	expired := make(chan string, 1)

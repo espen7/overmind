@@ -57,6 +57,7 @@
 - `protoactor-go` 基础接入
 - `player` 服务配置、actor runtime 配置、MongoDB 配置占位
 - `channelActor / PlayerActor / WorldActor` 基础骨架
+- `PlayerActor` 首版 MongoDB 聚合加载与刷盘骨架
 - `PlayerActor` 生命周期骨架：
   - 初始化
   - 在线绑定
@@ -76,7 +77,7 @@
 
 - 真正的跨节点 actor 远程通信
 - 基于 cluster provider 的全局唯一实体定位
-- 完整 MongoDB 数据加载、脏追踪与刷盘
+- `world` 与 `portal` 的 MongoDB 持久化
 - 角色选择与多角色管理
 - 技能、Buff、掉落、背包、任务
 - 跨服、聊天、公会、邮件

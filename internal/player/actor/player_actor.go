@@ -81,6 +81,8 @@ func (p *PlayerActor) Receive(ctx protoactor.Context) {
 		}
 	case playerInitialized:
 		p.handleInitialized(ctx)
+	case playerInitializationFailed:
+		p.handleInitializationFailed(ctx, msg)
 	case playerTick:
 		p.handleTick(ctx)
 	case clustermsg.PlayerLoginReq:
@@ -113,6 +115,7 @@ func (p *PlayerActor) handlePlayerLogin(ctx protoactor.Context, msg clustermsg.P
 		ctx.Respond(clustermsg.PlayerLoginRejected{Reason: err.Error()})
 		return
 	}
+	p.dataManager.OnLogin(login)
 
 	if p.channelPID != nil && p.connID != "" && p.connID != msg.ConnID {
 		// 同一玩家重新登录时，旧连接会被显式标记为过期，
@@ -163,6 +166,13 @@ func (p *PlayerActor) handleInitialized(ctx protoactor.Context) {
 	p.replayPending(ctx)
 }
 
+func (p *PlayerActor) handleInitializationFailed(ctx protoactor.Context, msg playerInitializationFailed) {
+	p.initializing = false
+	p.stopping = true
+	p.rejectPending(ctx, msg.Reason)
+	ctx.Poison(ctx.Self())
+}
+
 func (p *PlayerActor) handleTick(ctx protoactor.Context) {
 	p.dataManager.Tick()
 	if p.stopping && p.dataManager.Flush() {
@@ -210,6 +220,16 @@ func (p *PlayerActor) replayPending(ctx protoactor.Context) {
 			continue
 		}
 		ctx.Send(ctx.Self(), item.message)
+	}
+}
+
+func (p *PlayerActor) rejectPending(ctx protoactor.Context, reason string) {
+	pending := p.pending
+	p.pending = nil
+	for _, item := range pending {
+		if item.sender != nil {
+			ctx.Send(item.sender, clustermsg.PlayerLoginRejected{Reason: reason})
+		}
 	}
 }
 
