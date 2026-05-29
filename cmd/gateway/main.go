@@ -22,7 +22,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	logging.Init(cfg.Log.Level, cfg.Log.Encoding)
+	logging.Init(cfg.Services.Gateway.Name, cfg.Log.Level, cfg.Log.Encoding)
 
 	portalRepository := portalrepo.NewMemoryRepository()
 	portalHandler := portaltransport.NewHandler(portalservice.New(portalRepository))

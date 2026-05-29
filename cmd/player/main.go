@@ -17,7 +17,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	logging.Init(cfg.Log.Level, cfg.Log.Encoding)
+	logging.Init(cfg.Services.Player.Name, cfg.Log.Level, cfg.Log.Encoding)
 
 	runtime := clusterruntime.New(cfg.Actor)
 	server := &http.Server{

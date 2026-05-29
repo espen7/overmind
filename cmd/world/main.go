@@ -18,7 +18,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	logging.Init(cfg.Log.Level, cfg.Log.Encoding)
+	logging.Init(cfg.Services.World.Name, cfg.Log.Level, cfg.Log.Encoding)
 
 	// The world service owns scene state, AOI membership, and combat simulation.
 	world := repository.NewMemoryWorld()

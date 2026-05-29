@@ -32,6 +32,10 @@ func (s *Session) PlayerID() int64 {
 	return s.playerID
 }
 
+func (s *Session) ConnID() string {
+	return s.connID
+}
+
 func (s *Session) Token() string {
 	return s.token
 }

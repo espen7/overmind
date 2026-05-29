@@ -67,7 +67,7 @@ func (s *WSServer) Start(ctx context.Context) error {
 
 	go func() {
 		if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logging.L().Error("gateway listen failed", logging.String("error", err.Error()))
+			logging.L().Error("gateway listen failed", logging.Error(err))
 		}
 	}()
 
@@ -110,11 +110,19 @@ func (s *WSServer) serveWS(w http.ResponseWriter, r *http.Request) {
 
 		packet, err := protocol.Decode(message)
 		if err != nil {
-			logging.L().Warn("decode packet failed", logging.String("error", err.Error()))
+			logging.L().Warn(
+				"decode packet failed",
+				logging.Error(err),
+				logging.String("conn_id", currentClient.session.ConnID()),
+			)
 			continue
 		}
 		if err := s.handlePacket(currentClient, packet); err != nil {
-			logging.L().Warn("handle packet failed", logging.String("error", err.Error()))
+			logging.L().Warn(
+				"handle packet failed",
+				logging.Error(err),
+				logging.String("conn_id", currentClient.session.ConnID()),
+			)
 			_ = s.writeProto(currentClient, protocol.MessageTypeErrorResponse, &worldpb.ErrorResponse{
 				ErrorCode:    500,
 				ErrorMessage: err.Error(),
