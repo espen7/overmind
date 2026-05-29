@@ -34,6 +34,9 @@ func New(cfg platformapp.Config) *WorldApp {
 
 func (a *WorldApp) Start(ctx context.Context) error {
 	a.runtime = clusterruntime.New(a.cfg.Actors.World)
+	// 先创建一个可回填的 router，占住 world -> player 的统一出口。
+	// 等 cluster member 真正启动后，再把 cluster 实例回填进去。
+	router := clusterruntime.NewRouter(nil)
 
 	world := worldrepo.NewMemoryWorld()
 	scene := worldservice.NewScene(world)
@@ -46,9 +49,13 @@ func (a *WorldApp) Start(ctx context.Context) error {
 			scene,
 			combat,
 			world,
+			// 这样 WorldActor 内部无论是登录协同还是后续 world -> player 业务消息，
+			// 都统一走 kind + identity + Envelope，而不是自己维护 player PID。
+			worldactor.WithPlayerRouter(clusterruntime.NewPlayerRouter(router)),
 		),
 	)
 	a.cluster = clusterruntime.StartClusterMember(a.runtime.System(), a.cfg.Cluster, a.cfg.Actors.World, worldKind)
+	router.SetCluster(a.cluster)
 	return a.startHTTP()
 }
 

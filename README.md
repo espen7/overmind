@@ -33,8 +33,8 @@
 - `gateway`
   - 负责 WebSocket 接入、连接生命周期和 `channelActor`
   - 当前已经不再直接装配 `world` 的 repository/service/handler
-  - 登录成功后会通过 cluster client 把连接绑定到 `player` 实体
-  - 进图、移动、战斗等世界消息改为通过 cluster client 转发到 `world` 实体
+  - 登录成功后会通过 `player` shard proxy 把连接绑定到 `player` 实体
+  - 进图、移动、战斗等世界消息改为通过 `world` shard proxy 转发到 `world` 实体
   - `gateway <-> player` 当前统一走 `Envelope + protobuf`，用于会话绑定、解绑和顶号踢旧连接
   - `gateway <-> world` 当前统一走 `Envelope + protobuf`，不再混用 JSON 返回体
 - `portal`
@@ -54,9 +54,10 @@
 - `PlayerActor` 按 `playerID` 建模
 - `WorldActor` 按 `worldID` 建模
 - 当前仓库已经接入 `automanaged + disthash` 的 cluster provider 方案
-- `gateway` 作为 cluster client
+- `gateway` 作为 cluster client，并通过 `player/world` shard proxy 访问实体
 - `player` 与 `world` 作为 cluster member
 - `world -> player` 登录协同已经切到 `Envelope + protobuf`
+- `player` 进程已经统一装配 `player -> world` / `player -> player` 的 Envelope 远程出口
 - 后续会继续补齐更多 `player/world` 业务协同和 `channelActor` 热链路
 
 ## 当前已完成
@@ -74,6 +75,8 @@
 - `kind + identity` 路由过渡层
 - `gateway -> world` 跨进程 actor 通信
 - `gateway -> player` 跨进程 actor 通信
+- `world -> player` 登录协同跨进程 actor 通信
+- `player -> world` / `player -> player` 统一远程出口骨架
 - 本地登录账号校验
 - 令牌签发与会话绑定
 - 玩家进入场景
@@ -186,8 +189,8 @@ tools/         # 工具代码
 - [internal/cluster/runtime/local_virtual_cluster.go](/D:/workspace/githut_repo/overmind/internal/cluster/runtime/local_virtual_cluster.go:1)
 - [internal/cluster/runtime/remote.go](/D:/workspace/githut_repo/overmind/internal/cluster/runtime/remote.go:1)
 - [internal/gateway/actor/channel_actor.go](/D:/workspace/githut_repo/overmind/internal/gateway/actor/channel_actor.go:1)
-- [internal/gateway/playerclient/remote_client.go](/D:/workspace/githut_repo/overmind/internal/gateway/playerclient/remote_client.go:1)
-- [internal/gateway/worldclient/remote_client.go](/D:/workspace/githut_repo/overmind/internal/gateway/worldclient/remote_client.go:1)
+- [internal/gateway/playerproxy/remote_client.go](/D:/workspace/githut_repo/overmind/internal/gateway/playerproxy/remote_client.go:1)
+- [internal/gateway/worldproxy/remote_client.go](/D:/workspace/githut_repo/overmind/internal/gateway/worldproxy/remote_client.go:1)
 - [internal/player/actor/player_actor.go](/D:/workspace/githut_repo/overmind/internal/player/actor/player_actor.go:1)
 - [internal/world/actor/world_actor.go](/D:/workspace/githut_repo/overmind/internal/world/actor/world_actor.go:1)
 - [internal/world/service/scene_service.go](/D:/workspace/githut_repo/overmind/internal/world/service/scene_service.go:1)

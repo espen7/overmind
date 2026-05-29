@@ -20,6 +20,8 @@ type PlayerActor struct {
 	idleTimeout    time.Duration
 	tickInterval   time.Duration
 	onPassivated   func(playerID int64)
+	worldProxy     WorldProxy
+	playerProxy    PlayerProxy
 
 	connID       string
 	channelPID   *protoactor.PID
@@ -47,6 +49,8 @@ func New(playerID int64, loginService playerservice.LoginService, opts ...Option
 		idleTimeout:    config.IdleTimeout,
 		tickInterval:   config.TickInterval,
 		onPassivated:   config.OnPassivated,
+		worldProxy:     config.WorldProxy,
+		playerProxy:    config.PlayerProxy,
 	}
 }
 

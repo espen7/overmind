@@ -15,8 +15,10 @@ import (
 	"overmind/internal/platform/logging"
 	platformmongo "overmind/internal/platform/mongo"
 	playeractor "overmind/internal/player/actor"
+	playerproxy "overmind/internal/player/playerproxy"
 	playerrepo "overmind/internal/player/repository"
 	playerservice "overmind/internal/player/service"
+	worldproxy "overmind/internal/player/worldproxy"
 )
 
 // PlayerApp 对齐 antares-main 的 Node/App 组合根思路：
@@ -86,6 +88,8 @@ func (a *PlayerApp) startMongo(ctx context.Context) error {
 
 func (a *PlayerApp) startRuntime() error {
 	a.runtime = clusterruntime.New(a.cfg.Actors.Player)
+	// router 先作为 PlayerActor 的跨进程出口占位，等 cluster member 启动后回填真实 cluster。
+	router := clusterruntime.NewRouter(nil)
 
 	playerRepository := playerrepo.NewMongoRepository(a.database)
 	playerKind := cluster.NewKind(
@@ -98,12 +102,17 @@ func (a *PlayerApp) startRuntime() error {
 					playerrepo.NewPlayerActionRepository(playerRepository),
 				),
 			),
+			// PlayerActor 未来只要需要访问 world 或其他玩家实体，
+			// 都从这里拿统一的 Envelope + protobuf 出口，不再回退到 PID 直发。
+			playeractor.WithWorldProxy(worldproxy.NewProxy(router)),
+			playeractor.WithPlayerProxy(playerproxy.NewProxy(router)),
 		),
 	)
 
 	// 当前先启动本地 virtual cluster，把业务边界收敛到 kind + identity。
 	// 等后面接真正的 remote/provider 时，这层仍然由 PlayerApp 统一替换，不需要再改 main。
 	a.cluster = clusterruntime.StartClusterMember(a.runtime.System(), a.cfg.Cluster, a.cfg.Actors.Player, playerKind)
+	router.SetCluster(a.cluster)
 	return nil
 }
 

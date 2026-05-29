@@ -6,6 +6,7 @@ import (
 	protoactor "github.com/asynkron/protoactor-go/actor"
 
 	playerservice "overmind/internal/player/service"
+	kitpb "overmind/pkg/pb/kit"
 )
 
 type DataManager interface {
@@ -17,6 +18,18 @@ type DataManager interface {
 
 type ManagerFactory func(playerID int64) DataManager
 
+// WorldProxy 约束 PlayerActor 到 world region 的 shard proxy 出口。
+// 后续只要 player 侧有业务需要访问 world，都统一走 Envelope + protobuf。
+type WorldProxy interface {
+	RequestEnvelope(worldID int64, envelope *kitpb.Envelope) (*kitpb.Envelope, error)
+}
+
+// PlayerProxy 约束 PlayerActor 到其他玩家实体的 shard proxy 出口。
+// 这样 player -> player 不会再绕回 PID 或裸 struct。
+type PlayerProxy interface {
+	RequestEnvelope(playerID int64, envelope *kitpb.Envelope) (*kitpb.Envelope, error)
+}
+
 type Option func(*Config)
 
 type Config struct {
@@ -24,6 +37,8 @@ type Config struct {
 	TickInterval   time.Duration
 	ManagerFactory ManagerFactory
 	OnPassivated   func(playerID int64)
+	WorldProxy     WorldProxy
+	PlayerProxy    PlayerProxy
 }
 
 func defaultConfig() Config {
@@ -57,6 +72,18 @@ func WithManagerFactory(factory ManagerFactory) Option {
 func WithOnPassivated(fn func(playerID int64)) Option {
 	return func(cfg *Config) {
 		cfg.OnPassivated = fn
+	}
+}
+
+func WithWorldProxy(proxy WorldProxy) Option {
+	return func(cfg *Config) {
+		cfg.WorldProxy = proxy
+	}
+}
+
+func WithPlayerProxy(proxy PlayerProxy) Option {
+	return func(cfg *Config) {
+		cfg.PlayerProxy = proxy
 	}
 }
 

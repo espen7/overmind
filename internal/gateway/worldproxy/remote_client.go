@@ -1,4 +1,4 @@
-package worldclient
+package worldproxy
 
 import (
 	"fmt"
@@ -27,13 +27,15 @@ type EnterSceneInput struct {
 	Y          int32
 }
 
-type RemoteClient struct {
+// Proxy 对应 gateway 到 world 实体的 shard proxy。
+// gateway 只负责把客户端请求包装成 Envelope，再通过 proxy 投递到 world region。
+type Proxy struct {
 	router  *clusterruntime.Router
 	worldID int64
 }
 
-func NewRemoteClient(router *clusterruntime.Router, worldID int64) *RemoteClient {
-	return &RemoteClient{
+func NewProxy(router *clusterruntime.Router, worldID int64) *Proxy {
+	return &Proxy{
 		router:  router,
 		worldID: worldID,
 	}
@@ -41,7 +43,7 @@ func NewRemoteClient(router *clusterruntime.Router, worldID int64) *RemoteClient
 
 // EnterScene 把 gateway 持有的出生点上下文编码成 protobuf 请求，再包进 Envelope 发给 world。
 // 这样 gateway 不再自己持有 world service，只负责把 portal 返回的进图参数透传给 world actor。
-func (c *RemoteClient) EnterScene(input EnterSceneInput) ([]Outbound, error) {
+func (c *Proxy) EnterScene(input EnterSceneInput) ([]Outbound, error) {
 	payload, err := proto.Marshal(&kitpb.WorldEnterSceneRequest{
 		PlayerName: input.PlayerName,
 		SceneId:    input.SceneID,
@@ -59,7 +61,7 @@ func (c *RemoteClient) EnterScene(input EnterSceneInput) ([]Outbound, error) {
 	})
 }
 
-func (c *RemoteClient) Move(playerID int64, req *worldpb.MoveRequest) ([]Outbound, error) {
+func (c *Proxy) Move(playerID int64, req *worldpb.MoveRequest) ([]Outbound, error) {
 	payload, err := proto.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("marshal move request: %w", err)
@@ -71,7 +73,7 @@ func (c *RemoteClient) Move(playerID int64, req *worldpb.MoveRequest) ([]Outboun
 	})
 }
 
-func (c *RemoteClient) Attack(playerID int64, req *worldpb.AttackRequest) ([]Outbound, error) {
+func (c *Proxy) Attack(playerID int64, req *worldpb.AttackRequest) ([]Outbound, error) {
 	payload, err := proto.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("marshal attack request: %w", err)
@@ -83,7 +85,7 @@ func (c *RemoteClient) Attack(playerID int64, req *worldpb.AttackRequest) ([]Out
 	})
 }
 
-func (c *RemoteClient) request(route *kitpb.WorldRouteRequest) ([]Outbound, error) {
+func (c *Proxy) request(route *kitpb.WorldRouteRequest) ([]Outbound, error) {
 	envelope, err := clustermsg.NewRouteEnvelope(route)
 	if err != nil {
 		return nil, err

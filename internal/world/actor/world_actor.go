@@ -17,10 +17,10 @@ import (
 
 type PlayerResolver func(playerID int64) *protoactor.PID
 
-// PlayerRouter 把 world 到 player 的调用改成“按 playerID 找实体”。
-// 这样 world 不再关心 player actor 当前到底落在哪个节点、哪个 PID 上。
+// PlayerRouter 把 world -> player 的跨进程调用统一收口到 Envelope + protobuf。
+// 这样 WorldActor 不再依赖“拿到某个本地 PID 再发 Go struct”这种过渡模型。
 type PlayerRouter interface {
-	RequestFuture(playerID int64, message interface{}, timeout time.Duration) (protoactor.Future, error)
+	RequestEnvelope(playerID int64, envelope *kitpb.Envelope, timeout time.Duration) (*kitpb.Envelope, error)
 }
 
 type Option func(*WorldActor)
@@ -56,16 +56,16 @@ func Props(loginService worldservice.LoginService, playerResolver PlayerResolver
 
 // RemoteProps 给 world 进程注册 remote kind 使用。
 // 当前 world 进程内的世界状态仍然先保持内存态，但边界已经切成“gateway 远程请求 -> world actor 执行”。
-func ClusterProps(loginService worldservice.LoginService, scene *worldservice.SceneService, combat *worldservice.CombatService, world *worldrepo.MemoryWorld) *protoactor.Props {
+func ClusterProps(loginService worldservice.LoginService, scene *worldservice.SceneService, combat *worldservice.CombatService, world *worldrepo.MemoryWorld, opts ...Option) *protoactor.Props {
 	return Props(
 		loginService,
 		nil,
-		WithSceneRuntime(scene, combat, world),
+		append([]Option{WithSceneRuntime(scene, combat, world)}, opts...)...,
 	)
 }
 
-func RemoteProps(loginService worldservice.LoginService, scene *worldservice.SceneService, combat *worldservice.CombatService, world *worldrepo.MemoryWorld) *protoactor.Props {
-	return ClusterProps(loginService, scene, combat, world)
+func RemoteProps(loginService worldservice.LoginService, scene *worldservice.SceneService, combat *worldservice.CombatService, world *worldrepo.MemoryWorld, opts ...Option) *protoactor.Props {
+	return ClusterProps(loginService, scene, combat, world, opts...)
 }
 
 func WithPlayerRouter(router PlayerRouter) Option {
@@ -168,14 +168,9 @@ func (w *WorldActor) handleWorldLoginEnvelope(ctx protoactor.Context, envelope *
 		return nil, err
 	}
 
-	result, err := w.requestPlayer(ctx, playerID, loginEnvelope)
+	reply, err := w.requestPlayer(ctx, playerID, loginEnvelope)
 	if err != nil {
 		return nil, err
-	}
-
-	reply, ok := result.(*kitpb.Envelope)
-	if !ok {
-		return nil, fmt.Errorf("unexpected player login reply %T", result)
 	}
 	if mesh := reply.GetMesh(); mesh != nil && mesh.GetCmd() == clustermsg.MeshCmdPlayerError {
 		return nil, clustermsg.DecodePlayerErrorEnvelope(reply)
@@ -192,20 +187,26 @@ func (w *WorldActor) handleWorldLoginEnvelope(ctx protoactor.Context, envelope *
 	})
 }
 
-func (w *WorldActor) requestPlayer(ctx protoactor.Context, playerID int64, request *kitpb.Envelope) (interface{}, error) {
+func (w *WorldActor) requestPlayer(ctx protoactor.Context, playerID int64, request *kitpb.Envelope) (*kitpb.Envelope, error) {
 	if w.playerRouter != nil {
-		future, err := w.playerRouter.RequestFuture(playerID, request, time.Second)
-		if err != nil {
-			return nil, err
-		}
-		return future.Result()
+		return w.playerRouter.RequestEnvelope(playerID, request, time.Second)
 	}
 
 	playerPID := w.playerResolver(playerID)
 	if playerPID == nil {
 		return nil, fmt.Errorf("player actor not available")
 	}
-	return ctx.RequestFuture(playerPID, request, time.Second).Result()
+
+	result, err := ctx.RequestFuture(playerPID, request, time.Second).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	reply, ok := result.(*kitpb.Envelope)
+	if !ok {
+		return nil, fmt.Errorf("unexpected player reply %T", result)
+	}
+	return reply, nil
 }
 
 func (w *WorldActor) dispatchGatewayEnvelope(ctx protoactor.Context, envelope *kitpb.Envelope) (*kitpb.Envelope, error) {

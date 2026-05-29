@@ -10,9 +10,9 @@ import (
 	"github.com/gorilla/websocket"
 	"google.golang.org/protobuf/proto"
 
-	"overmind/internal/gateway/playerclient"
+	"overmind/internal/gateway/playerproxy"
 	"overmind/internal/gateway/protocol"
-	"overmind/internal/gateway/worldclient"
+	"overmind/internal/gateway/worldproxy"
 	"overmind/internal/platform/logging"
 	portaltransport "overmind/internal/portal/transport"
 	portalpb "overmind/pkg/pb/portal"
@@ -28,8 +28,8 @@ type client struct {
 type WSServer struct {
 	addr          string
 	portalHandler *portaltransport.Handler
-	playerClient  *playerclient.RemoteClient
-	worldClient   *worldclient.RemoteClient
+	playerProxy   *playerproxy.Proxy
+	worldProxy    *worldproxy.Proxy
 	httpServer    *http.Server
 	clients       sync.Map
 	players       sync.Map
@@ -52,14 +52,14 @@ var upgrader = websocket.Upgrader{
 func NewWSServer(
 	addr string,
 	portalHandler *portaltransport.Handler,
-	playerClient *playerclient.RemoteClient,
-	worldClient *worldclient.RemoteClient,
+	playerProxy *playerproxy.Proxy,
+	worldProxy *worldproxy.Proxy,
 ) *WSServer {
 	return &WSServer{
 		addr:          addr,
 		portalHandler: portalHandler,
-		playerClient:  playerClient,
-		worldClient:   worldClient,
+		playerProxy:   playerProxy,
+		worldProxy:    worldProxy,
 	}
 }
 
@@ -107,7 +107,7 @@ func (s *WSServer) serveWS(w http.ResponseWriter, r *http.Request) {
 	s.clients.Store(connID, currentClient)
 	defer func() {
 		if playerID := currentClient.session.PlayerID(); playerID != 0 {
-			if err := s.playerClient.UnbindSession(playerID, currentClient.session.ConnID()); err != nil {
+			if err := s.playerProxy.UnbindSession(playerID, currentClient.session.ConnID()); err != nil {
 				logging.L().Warn(
 					"unbind player session failed",
 					logging.Error(err),
@@ -165,7 +165,7 @@ func (s *WSServer) handlePacket(currentClient *client, packet protocol.Packet) e
 			return err
 		}
 		if resp.GetErrorCode() == 0 {
-			bindResp, err := s.playerClient.BindSession(playerclient.BindInput{
+			bindResp, err := s.playerProxy.BindSession(playerproxy.BindInput{
 				PlayerID: resp.GetPlayerId(),
 				WorldID:  1,
 				Account:  req.GetUsername(),
@@ -187,7 +187,7 @@ func (s *WSServer) handlePacket(currentClient *client, packet protocol.Packet) e
 
 	case protocol.MessageTypeEnterScene:
 		x, y := currentClient.session.Spawn()
-		outbound, err := s.worldClient.EnterScene(worldclient.EnterSceneInput{
+		outbound, err := s.worldProxy.EnterScene(worldproxy.EnterSceneInput{
 			PlayerID:   currentClient.session.PlayerID(),
 			PlayerName: currentClient.session.PlayerName(),
 			SceneID:    currentClient.session.SceneID(),
@@ -204,7 +204,7 @@ func (s *WSServer) handlePacket(currentClient *client, packet protocol.Packet) e
 		if err := proto.Unmarshal(packet.Payload, &req); err != nil {
 			return err
 		}
-		outbound, err := s.worldClient.Move(currentClient.session.PlayerID(), &req)
+		outbound, err := s.worldProxy.Move(currentClient.session.PlayerID(), &req)
 		if err != nil {
 			return err
 		}
@@ -215,7 +215,7 @@ func (s *WSServer) handlePacket(currentClient *client, packet protocol.Packet) e
 		if err := proto.Unmarshal(packet.Payload, &req); err != nil {
 			return err
 		}
-		outbound, err := s.worldClient.Attack(currentClient.session.PlayerID(), &req)
+		outbound, err := s.worldProxy.Attack(currentClient.session.PlayerID(), &req)
 		if err != nil {
 			return err
 		}
@@ -227,7 +227,7 @@ func (s *WSServer) handlePacket(currentClient *client, packet protocol.Packet) e
 }
 
 // broadcast 把 world 计算出的投递结果回写给当前仍在线的连接。
-func (s *WSServer) broadcast(messages []worldclient.Outbound) error {
+func (s *WSServer) broadcast(messages []worldproxy.Outbound) error {
 	for _, message := range messages {
 		for _, recipient := range message.Recipients {
 			value, ok := s.players.Load(recipient)

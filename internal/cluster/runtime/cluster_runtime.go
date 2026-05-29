@@ -41,6 +41,7 @@ func StartClusterMember(
 }
 
 // StartClusterClient 启动 gateway 这类“只发请求、不承载实体”的 cluster client。
+// 它本身不是 shard proxy；真正按实体类型转发时，仍然应该由上层再包一层 player/world proxy。
 func StartClusterClient(
 	system *actor.ActorSystem,
 	clusterCfg platformapp.ClusterConfig,

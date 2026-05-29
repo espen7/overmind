@@ -3,6 +3,7 @@ package runtime
 import (
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
@@ -32,9 +33,10 @@ func PlayerActorName(playerID int64) string {
 	return fmt.Sprintf("player-%s", PlayerIdentity(playerID))
 }
 
-// Router 是“按 kind + identity 找唯一实体”的统一入口。
-// 这样业务侧不需要再把本地 PID 当成稳定地址。
+// Router 更接近一层通用的 shard/entity router。
+// 它负责把“kind + identity”解析到唯一实体，具体业务再在上层包装成各自的 shard proxy。
 type Router struct {
+	mu      sync.RWMutex
 	cluster *cluster.Cluster
 }
 
@@ -42,8 +44,24 @@ func NewRouter(cluster *cluster.Cluster) *Router {
 	return &Router{cluster: cluster}
 }
 
+// SetCluster 允许先创建 router、后在 App 完成 cluster 启动后回填真实实例。
+// 这样 player/world 的 props 在装配阶段就能先拿到统一路由出口，不必退回到裸 PID。
+func (r *Router) SetCluster(cluster *cluster.Cluster) {
+	if r == nil {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.cluster = cluster
+}
+
 func (r *Router) PID(kind string, identity string) *actor.PID {
-	if r == nil || r.cluster == nil {
+	if r == nil {
+		return nil
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if r.cluster == nil {
 		return nil
 	}
 	return r.cluster.Get(identity, kind)
@@ -59,7 +77,12 @@ func (r *Router) Send(kind string, identity string, message interface{}) error {
 }
 
 func (r *Router) RequestFuture(kind string, identity string, message interface{}, timeout time.Duration) (actor.Future, error) {
-	if r == nil || r.cluster == nil {
+	if r == nil {
+		return nil, fmt.Errorf("cluster router not initialized")
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if r.cluster == nil {
 		return nil, fmt.Errorf("cluster router not initialized")
 	}
 	return r.cluster.RequestFuture(identity, kind, message, cluster.WithTimeout(timeout))
@@ -97,6 +120,24 @@ func (r *PlayerRouter) Send(playerID int64, message interface{}) error {
 	return r.router.Send(PlayerKind, PlayerIdentity(playerID), message)
 }
 
+// RequestEnvelope 把 world/player 对玩家实体的跨进程请求统一收口到 protobuf 信封。
+func (r *PlayerRouter) RequestEnvelope(playerID int64, envelope *kitpb.Envelope, timeout time.Duration) (*kitpb.Envelope, error) {
+	return r.router.RequestEnvelope(PlayerKind, PlayerIdentity(playerID), envelope, timeout)
+}
+
 func (r *PlayerRouter) RequestFuture(playerID int64, message interface{}, timeout time.Duration) (actor.Future, error) {
 	return r.router.RequestFuture(PlayerKind, PlayerIdentity(playerID), message, timeout)
+}
+
+type WorldRouter struct {
+	router *Router
+}
+
+func NewWorldRouter(router *Router) *WorldRouter {
+	return &WorldRouter{router: router}
+}
+
+// RequestEnvelope 把 player 对 world 实体的跨进程请求统一收口到 protobuf 信封。
+func (r *WorldRouter) RequestEnvelope(worldID int64, envelope *kitpb.Envelope, timeout time.Duration) (*kitpb.Envelope, error) {
+	return r.router.RequestEnvelope(WorldKind, WorldIdentity(worldID), envelope, timeout)
 }

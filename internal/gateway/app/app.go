@@ -7,8 +7,8 @@ import (
 
 	clusterruntime "overmind/internal/cluster/runtime"
 	gatewaynet "overmind/internal/gateway/net"
-	"overmind/internal/gateway/playerclient"
-	"overmind/internal/gateway/worldclient"
+	"overmind/internal/gateway/playerproxy"
+	"overmind/internal/gateway/worldproxy"
 	platformapp "overmind/internal/platform/app"
 	portalrepo "overmind/internal/portal/repository"
 	portalservice "overmind/internal/portal/service"
@@ -37,10 +37,10 @@ func (a *GatewayApp) Start(ctx context.Context) error {
 
 	portalRepository := portalrepo.NewMemoryRepository()
 	portalHandler := portaltransport.NewHandler(portalservice.New(portalRepository))
-	playerClient := playerclient.NewRemoteClient(router)
-	worldClient := worldclient.NewRemoteClient(router, 1)
+	playerProxy := playerproxy.NewProxy(router)
+	worldProxy := worldproxy.NewProxy(router, 1)
 
-	a.server = gatewaynet.NewWSServer(a.cfg.Services.Gateway.Address(), portalHandler, playerClient, worldClient)
+	a.server = gatewaynet.NewWSServer(a.cfg.Services.Gateway.Address(), portalHandler, playerProxy, worldProxy)
 	return a.server.Start(ctx)
 }
 
