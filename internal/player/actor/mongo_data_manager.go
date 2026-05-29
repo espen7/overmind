@@ -2,32 +2,47 @@ package actor
 
 import (
 	"context"
-	"errors"
-	"sync"
 	"time"
 
 	protoactor "github.com/asynkron/protoactor-go/actor"
 
-	playerdomain "overmind/internal/player/domain"
+	"overmind/internal/platform/logging"
+	"overmind/internal/platform/persistence"
+	playerdata "overmind/internal/player/data"
 	playerrepo "overmind/internal/player/repository"
 	playerservice "overmind/internal/player/service"
 )
 
 type mongoDataManager struct {
-	playerID   int64
-	repository playerrepo.PlayerRepository
+	playerID int64
 
-	mu     sync.Mutex
-	player playerdomain.Player
-	loaded bool
-	dirty  bool
+	playerMem       *playerdata.PlayerMem
+	playerActionMem *playerdata.PlayerActionMem
+
+	mems       []persistence.MemData
+	traceables []persistence.TraceableMemData
 }
 
-func NewMongoManagerFactory(repository playerrepo.PlayerRepository) ManagerFactory {
+func NewMongoManagerFactory(
+	playerRepository playerrepo.PlayerRepository,
+	playerActionRepository playerrepo.PlayerActionRepository,
+) ManagerFactory {
 	return func(playerID int64) DataManager {
+		playerMem := playerdata.NewPlayerMem(playerID, playerRepository)
+		playerActionMem := playerdata.NewPlayerActionMem(playerID, playerActionRepository)
+
 		return &mongoDataManager{
-			playerID:   playerID,
-			repository: repository,
+			playerID:        playerID,
+			playerMem:       playerMem,
+			playerActionMem: playerActionMem,
+			mems: []persistence.MemData{
+				playerMem,
+				playerActionMem,
+			},
+			traceables: []persistence.TraceableMemData{
+				playerMem,
+				playerActionMem,
+			},
 		}
 	}
 }
@@ -37,83 +52,58 @@ func (m *mongoDataManager) Init(system *protoactor.ActorSystem, self *protoactor
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		player, err := m.repository.Load(ctx, m.playerID)
-		if err != nil {
-			if !errors.Is(err, playerrepo.ErrPlayerNotFound) {
-				system.Root.Send(self, playerInitializationFailed{Reason: err.Error()})
-				return
-			}
-
-			player = playerdomain.NewPlayer(m.playerID)
-			if err := m.repository.Save(ctx, player); err != nil {
+		for _, mem := range m.mems {
+			if err := mem.Init(ctx); err != nil {
 				system.Root.Send(self, playerInitializationFailed{Reason: err.Error()})
 				return
 			}
 		}
 
-		m.mu.Lock()
-		m.player = player
-		m.loaded = true
-		m.dirty = false
-		m.mu.Unlock()
+		for _, mem := range m.traceables {
+			if err := mem.MarkClean(); err != nil {
+				system.Root.Send(self, playerInitializationFailed{Reason: err.Error()})
+				return
+			}
+		}
 
 		system.Root.Send(self, playerInitialized{})
 	}()
 }
 
 func (m *mongoDataManager) Tick() {
-	if !m.isDirty() {
-		return
+	for _, mem := range m.traceables {
+		if err := mem.TraceEntities(); err != nil {
+			logging.L().Warn(
+				"player trace entities failed",
+				logging.Int64("player_id", m.playerID),
+				logging.Error(err),
+			)
+		}
 	}
-	_ = m.flush()
 }
 
 func (m *mongoDataManager) Flush() bool {
-	if !m.isDirty() {
-		return true
-	}
-	return m.flush() == nil
-}
-
-func (m *mongoDataManager) OnLogin(login playerservice.LoginResult) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if !m.loaded {
-		return
-	}
-
-	m.player.ApplyLogin(login.WorldID, login.Account)
-	m.dirty = true
-}
-
-func (m *mongoDataManager) isDirty() bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.loaded && m.dirty
-}
-
-func (m *mongoDataManager) flush() error {
-	m.mu.Lock()
-	if !m.loaded || !m.dirty {
-		m.mu.Unlock()
-		return nil
-	}
-	player := m.player
-	m.mu.Unlock()
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := m.repository.Save(ctx, player); err != nil {
-		return err
+	ok := true
+	for _, mem := range m.traceables {
+		if err := mem.Flush(ctx); err != nil {
+			ok = false
+			logging.L().Warn(
+				"player flush failed",
+				logging.Int64("player_id", m.playerID),
+				logging.Error(err),
+			)
+		}
 	}
+	return ok
+}
 
-	m.mu.Lock()
-	if m.player.Version == player.Version {
-		m.dirty = false
+func (m *mongoDataManager) OnLogin(login playerservice.LoginResult) {
+	player := m.playerMem.Player()
+	if player == nil {
+		return
 	}
-	m.mu.Unlock()
-
-	return nil
+	player.ApplyLogin(login.WorldID, login.Account)
 }

@@ -38,13 +38,15 @@ func main() {
 		_ = mongoClient.Disconnect(shutdownCtx)
 	}()
 
+	playerRepository := playerrepo.NewMongoRepository(database)
 	playerKind := cluster.NewKind(
 		clusterruntime.PlayerKind,
 		playeractor.ClusterProps(
 			playerservice.NewStaticLoginService(),
 			playeractor.WithManagerFactory(
 				playeractor.NewMongoManagerFactory(
-					playerrepo.NewMongoRepository(database),
+					playerRepository,
+					playerrepo.NewPlayerActionRepository(playerRepository),
 				),
 			),
 		),

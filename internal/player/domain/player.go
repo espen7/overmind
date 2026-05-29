@@ -41,3 +41,23 @@ func (p *Player) ApplyLogin(worldID int64, account string) {
 	p.UpdatedAt = now
 	p.Version++
 }
+
+type PlayerAction struct {
+	ID        string    `bson:"_id"`
+	PlayerID  int64     `bson:"player_id"`
+	NumericID int64     `bson:"numeric_id"`
+	ActionID  int32     `bson:"action_id"`
+	StartAt   int64     `bson:"start_at"`
+	EndAt     int64     `bson:"end_at"`
+	UpdatedAt time.Time `bson:"updated_at"`
+}
+
+func NewPlayerAction(playerID int64, numericID int64, actionID int32) PlayerAction {
+	return PlayerAction{
+		ID:        fmt.Sprintf("%d_%d", playerID, numericID),
+		PlayerID:  playerID,
+		NumericID: numericID,
+		ActionID:  actionID,
+		UpdatedAt: time.Now().UTC(),
+	}
+}

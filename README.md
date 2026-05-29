@@ -57,7 +57,7 @@
 - `protoactor-go` 基础接入
 - `player` 服务配置、actor runtime 配置、MongoDB 配置占位
 - `channelActor / PlayerActor / WorldActor` 基础骨架
-- `PlayerActor` 首版 MongoDB 聚合加载与刷盘骨架
+- `PlayerActor` 首版 `PlayerMem + PlayerActionMem` MongoDB traceable 持久化骨架
 - `PlayerActor` 生命周期骨架：
   - 初始化
   - 在线绑定
