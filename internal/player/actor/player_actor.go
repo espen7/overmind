@@ -1,21 +1,24 @@
 package actor
 
 import (
+	"strconv"
 	"time"
 
 	protoactor "github.com/asynkron/protoactor-go/actor"
+	"github.com/asynkron/protoactor-go/cluster"
 
 	clustermsg "overmind/internal/cluster/messages"
 	playerservice "overmind/internal/player/service"
 )
 
 type PlayerActor struct {
-	playerID     int64
-	loginService playerservice.LoginService
-	dataManager  DataManager
-	idleTimeout  time.Duration
-	tickInterval time.Duration
-	onPassivated func(playerID int64)
+	playerID       int64
+	loginService   playerservice.LoginService
+	dataManager    DataManager
+	managerFactory ManagerFactory
+	idleTimeout    time.Duration
+	tickInterval   time.Duration
+	onPassivated   func(playerID int64)
 
 	connID       string
 	channelPID   *protoactor.PID
@@ -35,12 +38,12 @@ func New(playerID int64, loginService playerservice.LoginService, opts ...Option
 	}
 
 	return &PlayerActor{
-		playerID:     playerID,
-		loginService: loginService,
-		dataManager:  config.ManagerFactory(playerID),
-		idleTimeout:  config.IdleTimeout,
-		tickInterval: config.TickInterval,
-		onPassivated: config.OnPassivated,
+		playerID:       playerID,
+		loginService:   loginService,
+		managerFactory: config.ManagerFactory,
+		idleTimeout:    config.IdleTimeout,
+		tickInterval:   config.TickInterval,
+		onPassivated:   config.OnPassivated,
 	}
 }
 
@@ -50,9 +53,18 @@ func Props(playerID int64, loginService playerservice.LoginService, opts ...Opti
 	})
 }
 
+// ClusterProps 给 cluster kind 注册用。
+// 真正激活时，PlayerActor 会从 cluster identity 中恢复自己的 playerID。
+func ClusterProps(loginService playerservice.LoginService, opts ...Option) *protoactor.Props {
+	return protoactor.PropsFromProducer(func() protoactor.Actor {
+		return New(0, loginService, opts...)
+	})
+}
+
 func (p *PlayerActor) Receive(ctx protoactor.Context) {
 	switch msg := ctx.Message().(type) {
 	case *protoactor.Started:
+		p.bindClusterIdentity(ctx)
 		return
 	case *protoactor.ReceiveTimeout:
 		if p.active && !p.isOnline() {
@@ -72,6 +84,10 @@ func (p *PlayerActor) Receive(ctx protoactor.Context) {
 	case playerTick:
 		p.handleTick(ctx)
 	case clustermsg.PlayerLoginReq:
+		p.bindClusterIdentity(ctx)
+		if p.playerID == 0 {
+			p.playerID = msg.PlayerID
+		}
 		if p.shouldBuffer() {
 			p.startInitialization(ctx)
 			p.enqueue(ctx, msg)
@@ -86,6 +102,7 @@ func (p *PlayerActor) Receive(ctx protoactor.Context) {
 }
 
 func (p *PlayerActor) handlePlayerLogin(ctx protoactor.Context, msg clustermsg.PlayerLoginReq) {
+	p.bindClusterIdentity(ctx)
 	if msg.PlayerID != p.playerID {
 		ctx.Respond(clustermsg.PlayerLoginRejected{Reason: "player actor identity mismatch"})
 		return
@@ -125,6 +142,9 @@ func (p *PlayerActor) startInitialization(ctx protoactor.Context) {
 		return
 	}
 
+	if p.dataManager == nil {
+		p.dataManager = p.managerFactory(p.playerID)
+	}
 	p.initializing = true
 	p.dataManager.Init(ctx.ActorSystem(), ctx.Self())
 }
@@ -228,4 +248,21 @@ func samePID(left *protoactor.PID, right *protoactor.PID) bool {
 	}
 
 	return left.Address == right.Address && left.Id == right.Id
+}
+
+func (p *PlayerActor) bindClusterIdentity(ctx protoactor.Context) {
+	if p.playerID != 0 {
+		return
+	}
+
+	identity := cluster.GetClusterIdentity(ctx)
+	if identity == nil {
+		return
+	}
+
+	playerID, err := strconv.ParseInt(identity.Identity, 10, 64)
+	if err != nil {
+		return
+	}
+	p.playerID = playerID
 }
