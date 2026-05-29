@@ -38,6 +38,7 @@ func Load(configPath string) (app.Config, error) {
 	return cfg, nil
 }
 
+// setDefaults 让各节点在本地开发时即使缺少完整配置文件也能直接启动。
 func setDefaults(v *viper.Viper) {
 	v.SetDefault("services.gateway.name", "gateway")
 	v.SetDefault("services.gateway.host", "127.0.0.1")

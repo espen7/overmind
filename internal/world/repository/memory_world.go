@@ -125,6 +125,7 @@ func (w *MemoryWorld) SaveMonster(sceneID int64, monster domain.Monster) {
 func (w *MemoryWorld) ensureGrid(sceneID int64) *aoi.Grid {
 	grid, ok := w.grids[sceneID]
 	if !ok {
+		// 这里先用固定场景尺寸占位，后续会改成从 world runtime 配置或场景数据表注入。
 		grid = aoi.NewGrid(1000, 1000, 100)
 		w.grids[sceneID] = grid
 	}

@@ -65,6 +65,7 @@ type Config struct {
 	Log      LogConfig          `mapstructure:"log"`
 }
 
+// Validate 在启动阶段兜住最基础的配置错误，避免服务半启动后才暴露问题。
 func (c Config) Validate() error {
 	check := func(name string, svc ServiceConfig) error {
 		if svc.Name == "" {
@@ -111,6 +112,7 @@ type Server interface {
 	Stop(context.Context) error
 }
 
+// RunServer 统一处理服务启动、信号监听和优雅停机。
 func RunServer(ctx context.Context, server Server) error {
 	if err := server.Start(ctx); err != nil {
 		return err

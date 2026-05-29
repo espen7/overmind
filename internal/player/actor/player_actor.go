@@ -13,6 +13,8 @@ type PlayerActor struct {
 	channelPID   *protoactor.PID
 }
 
+// New PlayerActor 代表“单个玩家的在线私有边界”。
+// 后续背包、建筑、科技、任务等玩家主数据都会优先收敛到这里。
 func New(loginService playerservice.LoginService) *PlayerActor {
 	return &PlayerActor{loginService: loginService}
 }
@@ -38,12 +40,15 @@ func (p *PlayerActor) handlePlayerLogin(ctx protoactor.Context, msg clustermsg.P
 	}
 
 	if p.channelPID != nil && p.connID != "" && p.connID != msg.ConnID {
+		// 同一玩家重新登录时，旧连接会被显式标记为过期，
+		// 避免两个 channelActor 同时认为自己还拥有这名玩家。
 		ctx.Send(p.channelPID, clustermsg.ChannelExpired{ConnID: p.connID})
 	}
 
 	p.connID = msg.ConnID
 	p.channelPID = msg.ChannelPID
 
+	// playerActor 接受这次绑定之后，才把最终成功结果回给 world/channel。
 	ctx.Respond(clustermsg.PlayerLoginResp{
 		PlayerID: login.PlayerID,
 		WorldID:  login.WorldID,

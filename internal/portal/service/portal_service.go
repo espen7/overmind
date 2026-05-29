@@ -47,6 +47,8 @@ func (s *PortalService) Login(username string, password string) (LoginResult, er
 	}
 
 	token := hex.EncodeToString(tokenBytes)
+	// portal 目前仍然承担轻量账号入口：验密、发 token、返回初始出生点。
+	// 等 actor 热链路接稳后，它会进一步收敛成“登录入口”而不是世界热路径的一部分。
 	s.repo.SaveToken(token, account)
 
 	return LoginResult{

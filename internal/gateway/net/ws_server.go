@@ -34,6 +34,8 @@ type WSServer struct {
 	nextID        uint64
 }
 
+// 这里仍然保留旧的 handler 直调链路，目的是让现有 websocket 能继续跑通。
+// 后续 actor 热链路接完后，handlePacket 会逐步切到 channelActor -> world/player。
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
@@ -134,6 +136,8 @@ func (s *WSServer) handlePacket(currentClient *client, packet protocol.Packet) e
 			return err
 		}
 		if resp.GetErrorCode() == 0 {
+			// 旧链路里仍然由 gateway 直接维护 playerID -> client 的映射，
+			// 方便 scene/world 返回广播结果时回写到对应连接。
 			currentClient.session.Bind(resp.GetPlayerId(), resp.GetToken())
 			currentClient.session.SetSpawn(resp.GetPlayerName(), resp.GetSceneId(), resp.GetX(), resp.GetY())
 			s.players.Store(resp.GetPlayerId(), currentClient)
@@ -181,6 +185,7 @@ func (s *WSServer) handlePacket(currentClient *client, packet protocol.Packet) e
 func (s *WSServer) broadcast(messages []worldtransport.Outbound) error {
 	for _, message := range messages {
 		for _, recipient := range message.Recipients {
+			// recipients 是 world 侧算好的可见玩家列表，gateway 这里只做纯转发。
 			value, ok := s.players.Load(recipient)
 			if !ok {
 				continue

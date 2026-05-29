@@ -22,6 +22,8 @@ func (s *CombatService) Attack(playerID int64, sceneID int64, targetID int64) (d
 		return domain.AttackResult{}, err
 	}
 
+	// 这里故意保持极简：固定伤害、无技能链、无 Buff、无仇恨。
+	// 目标是先验证“世界内战斗事件 -> 广播”这条最短闭环。
 	damage := int32(20)
 	monster.HP -= damage
 	if monster.HP <= 0 {

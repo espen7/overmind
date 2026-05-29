@@ -14,6 +14,7 @@ type Runtime struct {
 	config app.ActorConfig
 }
 
+// New 当前先只封装本地 ActorSystem，后面接 protoactor remote/cluster 时继续沿用这里做统一入口。
 func New(cfg app.ActorConfig) *Runtime {
 	system := actor.NewActorSystem()
 	return &Runtime{
@@ -31,6 +32,7 @@ func (r *Runtime) Root() *actor.RootContext {
 	return r.root
 }
 
+// Address 返回当前 actor 节点预留给 remote/cluster 使用的监听地址。
 func (r *Runtime) Address() string {
 	return fmt.Sprintf("%s:%d", r.config.Host, r.config.Port)
 }
