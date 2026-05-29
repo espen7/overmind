@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"github.com/spf13/viper"
+
+	"overmind/internal/platform/logging"
 )
 
 // Load 从文件和环境变量中读取配置
@@ -32,7 +34,7 @@ func Load(configPath string) (*Config, error) {
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			// 配置文件未找到：仅使用默认值和环境变量，不报错
-			fmt.Println("Config file not found, using defaults/env")
+			logging.L().Info("config file not found, using defaults and environment variables")
 		} else {
 			// 配置文件存在但解析错误：报错
 			return nil, fmt.Errorf("fatal error config file: %w", err)
