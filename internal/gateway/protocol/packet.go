@@ -18,12 +18,17 @@ const (
 	MessageTypeErrorResponse   uint16 = 9000
 )
 
-type Packet struct {
+// ClientPacket 是 client <-> gateway 的客户端传输信封。
+// 它只关心客户端协议 ID 和原始 protobuf payload，不承担服务间 RPC 路由职责。
+type ClientPacket struct {
 	Type    uint16
 	Payload []byte
 }
 
-func Encode(packet Packet) []byte {
+// Packet 是兼容旧调用点的别名，后续新代码应优先使用 ClientPacket。
+type Packet = ClientPacket
+
+func Encode(packet ClientPacket) []byte {
 	buf := bytes.NewBuffer(make([]byte, 0, 6+len(packet.Payload)))
 	_ = binary.Write(buf, binary.BigEndian, packet.Type)
 	_ = binary.Write(buf, binary.BigEndian, uint32(len(packet.Payload)))
@@ -31,15 +36,15 @@ func Encode(packet Packet) []byte {
 	return buf.Bytes()
 }
 
-func Decode(data []byte) (Packet, error) {
+func Decode(data []byte) (ClientPacket, error) {
 	if len(data) < 6 {
-		return Packet{}, fmt.Errorf("packet too short")
+		return ClientPacket{}, fmt.Errorf("packet too short")
 	}
 	size := binary.BigEndian.Uint32(data[2:6])
 	if len(data[6:]) != int(size) {
-		return Packet{}, fmt.Errorf("packet size mismatch")
+		return ClientPacket{}, fmt.Errorf("packet size mismatch")
 	}
-	return Packet{
+	return ClientPacket{
 		Type:    binary.BigEndian.Uint16(data[:2]),
 		Payload: append([]byte(nil), data[6:]...),
 	}, nil

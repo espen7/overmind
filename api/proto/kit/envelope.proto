@@ -4,34 +4,39 @@ package kit;
 
 option go_package = "overmind/pkg/pb/kit";
 
-// Envelope 是所有 Actor 间通信的顶层容器。
-// 它提供了分布式追踪和元数据上下文。
+// Envelope is the concrete RPC envelope used for process-to-process traffic.
+//
+// The project intentionally distinguishes three message layers:
+// 1. ClientPacket: client <-> gateway transport packet
+// 2. Envelope: process <-> process RPC envelope
+// 3. LocalCommand / LocalEvent: in-process actor mailbox messages
+//
+// This proto only models layer 2.
 message Envelope {
-    string trace_id = 1; // 分布式追踪 ID
-    int64 timestamp = 2; // Unix 时间戳 (纳秒)
-    
-    // 负载可以是 EdgeLetter (来自/发往客户端) 或 MeshLetter (内部)。
+    string trace_id = 1;
+    int64 timestamp = 2;
+
     oneof payload {
-        EdgeLetter edge = 3;   
-        MeshLetter mesh = 4;   
+        EdgeLetter edge = 3;
+        MeshLetter mesh = 4;
     }
 }
 
-// EdgeLetter 封装了源自或发往外部客户端 (Edge) 的消息。
-// 对应设计中的 "ClientLetter" 概念。
+// EdgeLetter carries client-facing semantics inside the internal RPC bus.
+// It is not the outer ClientPacket itself; gateway may decode a ClientPacket
+// first and then wrap the business payload into EdgeLetter.
 message EdgeLetter {
-    int32 msg_type   = 1; // 协议 ID (例如 1001 代表登录)
-    bytes body       = 2; // 具体消息的序列化 Protobuf体
-    int64 session_id = 3; // 网关 Channel/Session ID (用于路由响应)
-    string player_id = 4; // 关联的玩家 ID (认证后填充)
-    int32 msg_no     = 5; // 客户端序列号
+    int32 msg_type = 1;
+    bytes body = 2;
+    int64 session_id = 3;
+    string player_id = 4;
+    int32 msg_no = 5;
 }
 
-// MeshLetter 封装了内部控制命令或系统消息。
-// 对应设计中的 "SystemLetter" 概念。
+// MeshLetter carries internal command/event/control semantics between services.
 message MeshLetter {
-    string cmd            = 1; // 命令动词: KICK, STOP, RELOAD 等
-    bytes params          = 2; // 序列化参数 (可选)
-    string sender_service = 3; // 发送方服务名称
-    string target_service = 4; // 目标服务名称
+    string cmd = 1;
+    bytes params = 2;
+    string sender_service = 3;
+    string target_service = 4;
 }

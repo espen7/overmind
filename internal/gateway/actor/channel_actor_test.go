@@ -38,7 +38,7 @@ func TestChannelActorRoutesLoginToWorld(t *testing.T) {
 		return nil
 	}))
 
-	system.Root.Send(pid, LoginFrame{
+	system.Root.Send(pid, LoginCommand{
 		WorldID: 7,
 		Account: "demo",
 	})
@@ -86,7 +86,7 @@ func TestChannelActorRoutesPlayerEnvelopeAfterAuthorization(t *testing.T) {
 		t.Fatalf("encode world login response: %v", err)
 	}
 	system.Root.Send(pid, reply)
-	system.Root.Send(pid, ClientPlayerEnvelope{Payload: "march"})
+	system.Root.Send(pid, RouteToPlayerCommand{Payload: "march"})
 
 	select {
 	case msg := <-playerMessages:

@@ -3,7 +3,7 @@ package protocol
 import "testing"
 
 func TestPacketRoundTrip(t *testing.T) {
-	packet := Packet{Type: 1001, Payload: []byte("hello")}
+	packet := ClientPacket{Type: 1001, Payload: []byte("hello")}
 	encoded := Encode(packet)
 	decoded, err := Decode(encoded)
 	if err != nil {

@@ -152,7 +152,9 @@ func (s *WSServer) serveWS(w http.ResponseWriter, r *http.Request) {
 
 // handlePacket 保持 gateway 只做薄分发:
 // 登录归 portal + player，世界行为归 world。
-func (s *WSServer) handlePacket(currentClient *client, packet protocol.Packet) error {
+// handlePacket 处理的是 ClientPacket，而不是服务间 RpcEnvelope。
+// gateway 会在这里把客户端传输信封拆开，再根据消息路由拼装成进程间 Envelope。
+func (s *WSServer) handlePacket(currentClient *client, packet protocol.ClientPacket) error {
 	switch packet.Type {
 	case protocol.MessageTypeLoginRequest:
 		var req portalpb.LoginRequest
@@ -265,7 +267,7 @@ func (s *WSServer) writeProto(target *client, messageType uint16, msg proto.Mess
 }
 
 func (s *WSServer) writePayload(target *client, messageType uint16, payload []byte) error {
-	packet := protocol.Encode(protocol.Packet{Type: messageType, Payload: payload})
+	packet := protocol.Encode(protocol.ClientPacket{Type: messageType, Payload: payload})
 	target.mu.Lock()
 	defer target.mu.Unlock()
 	return target.conn.WriteMessage(websocket.BinaryMessage, packet)

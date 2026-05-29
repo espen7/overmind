@@ -1,104 +1,143 @@
 # Overmind
 
-`Overmind` 是一个用 Go 编写的 SLG 游戏服务器项目。当前仓库正参考 `antares-main` 的 actor 架构，逐步把早期的进程内直调实现迁移为 `gateway + portal + player + world` 四节点模型。
-
-> 当前分支处于重写与架构迁移阶段，重点是先把在线模型、玩家实体边界和 actor 运行时打稳，再逐步补齐跨节点通信和持久化能力。
+`Overmind` 是一个使用 Go 编写的 SLG 游戏服务器项目，采用 `gateway + portal + player + world` 的服务边界，并基于 actor 模型组织在线连接、玩家实体与世界实体。
 
 ## 项目状态
 
-- 当前阶段：`pre-alpha / active rewrite`
-- 当前目标：对齐 `antares-main` 的 actor 设计，建立可扩展的玩家实体与世界实体模型
-- 当前范围：不包含监控运维、后台管理、跨服、家园系统和完整的 MongoDB 落地实现
+项目目前处于早期开发阶段，核心目标是先稳定服务边界、消息模型与实体运行时，再逐步扩展完整的游戏玩法与持久化能力。
 
-如果你是第一次打开这个仓库，建议先把它理解成一个“正在从原型代码迁移到正式 actor 架构”的项目，而不是一个已经功能完备的成品服务器。
+当前仓库不包含以下模块：
+
+- 监控运维
+- GM / Admin 后台
+- 跨服能力
+- 家园系统
 
 ## 核心特性
 
-- 基于 Go 实现，当前统一使用 `zap` 做结构化日志
-- 采用 `gateway + portal + player + world` 四服务边界
-- 已引入 `protoactor-go`，并开始向 `kind + identity` 的实体路由模型迁移
-- `player` 与 `world` 明确分边界：
-  - `player` 持有玩家私有主数据
-  - `world` 持有世界运行所需投影与公共状态
-- 已具备最小可运行的在线链路骨架：
-  - 登录校验与令牌签发
-  - `channelActor -> WorldActor -> PlayerActor` 登录协调
-  - `PlayerActor` 初始化、在线绑定、空闲钝化、flush 骨架
-  - 场景进入、AOI 可见性、基础怪物和基础战斗
+- 使用 Go 实现，日志统一基于 `zap`
+- 服务边界清晰：`gateway`、`portal`、`player`、`world`
+- actor 实体按 `kind + identity` 路由
+- 支持 `ChannelActor`、`PlayerActor`、`WorldActor` 三类核心 actor
+- 跨进程通信统一走 protobuf `Envelope`
+- 客户端接入采用 `ClientPacket`
+- 已具备基础登录、会话绑定、进图、AOI、基础战斗链路
+- `PlayerActor` 已具备初始化、在线绑定、空闲钝化、Flush 骨架
+- `player` 侧已接入首版 MongoDB 持久化骨架
 
 ## 架构概览
 
 ### 服务边界
 
 - `gateway`
-  - 负责 WebSocket 接入、连接生命周期和 `channelActor`
-  - 当前已经不再直接装配 `world` 的 repository/service/handler
-  - 登录成功后会通过 `player` shard proxy 把连接绑定到 `player` 实体
-  - 进图、移动、战斗等世界消息改为通过 `world` shard proxy 转发到 `world` 实体
-  - `gateway <-> player` 当前统一走 `Envelope + protobuf`，用于会话绑定、解绑和顶号踢旧连接
-  - `gateway <-> world` 当前统一走 `Envelope + protobuf`，不再混用 JSON 返回体
+  - 负责 WebSocket 接入、连接生命周期与消息编解码
+  - 通过 `player` shard proxy 和 `world` shard proxy 访问实体
 - `portal`
-  - 负责轻量账号入口与令牌能力
-  - 第一版不进入核心 actor 热链路
+  - 负责账号入口、认证与令牌能力
 - `player`
   - 负责 `PlayerActor`
-  - 是玩家私有主数据与玩家级业务状态的入口
+  - 持有玩家私有主数据与玩家级业务状态
 - `world`
   - 负责 `WorldActor`
-  - 承担世界登录协调、场景状态、AOI 与基础战斗
+  - 持有世界运行所需的投影与公共状态
 
-### Actor 设计方向
+### Actor 模型
 
-当前 actor 运行时正从“直接拿本地 PID”过渡到“按 `kind + identity` 找唯一实体”的模式：
+- `ChannelActor`
+  - 表示一条网关连接对应的会话上下文
+- `PlayerActor`
+  - 表示单个玩家实体
+- `WorldActor`
+  - 表示单个世界实体
 
-- `PlayerActor` 按 `playerID` 建模
-- `WorldActor` 按 `worldID` 建模
-- 当前仓库已经接入 `automanaged + disthash` 的 cluster provider 方案
-- `gateway` 作为 cluster client，并通过 `player/world` shard proxy 访问实体
-- `player` 与 `world` 作为 cluster member
-- `world -> player` 登录协同已经切到 `Envelope + protobuf`
-- `player` 进程已经统一装配 `player -> world` / `player -> player` 的 Envelope 远程出口
-- 后续会继续补齐更多 `player/world` 业务协同和 `channelActor` 热链路
+### 集群与路由
 
-## 当前已完成
+- `gateway` 作为 cluster client
+- `player` 和 `world` 作为 cluster member
+- 远程实体通过 `kind + identity` 定位
+- shard proxy 负责把请求转发到目标实体
+
+## 消息模型
+
+项目中的消息分为三层：
+
+### 1. ClientPacket
+
+`ClientPacket` 用于 `client <-> gateway`。
+
+职责：
+
+- 表达客户端协议号 `msg_type`
+- 表达二进制 payload
+- 处理长度边界与编解码
+
+位置：
+
+- [internal/gateway/protocol/packet.go](/D:/workspace/githut_repo/overmind/internal/gateway/protocol/packet.go:1)
+
+### 2. Envelope
+
+`Envelope` 用于 `process <-> process`。
+
+覆盖：
+
+- `gateway -> player`
+- `gateway -> world`
+- `world -> player`
+- `player -> world`
+- `player -> player`
+
+职责：
+
+- 承载 trace / timestamp / sender / target 等服务间元数据
+- 承载客户端语义载荷 `EdgeLetter`
+- 承载内部系统载荷 `MeshLetter`
+
+位置：
+
+- [api/proto/kit/envelope.proto](/D:/workspace/githut_repo/overmind/api/proto/kit/envelope.proto:1)
+
+### 3. LocalCommand / LocalEvent
+
+`LocalCommand / LocalEvent` 仅用于 actor 进程内邮箱消息。
+
+当前示例：
+
+- `LoginCommand`
+- `RouteToPlayerCommand`
+- `RouteToWorldCommand`
+
+位置：
+
+- [internal/gateway/actor/channel_actor.go](/D:/workspace/githut_repo/overmind/internal/gateway/actor/channel_actor.go:1)
+
+更完整的设计说明见：
+
+- [docs/superpowers/specs/2026-05-29-overmind-message-layering-design.md](/D:/workspace/githut_repo/overmind/docs/superpowers/specs/2026-05-29-overmind-message-layering-design.md:1)
+
+## 已实现能力
 
 - `protoactor-go` 基础接入
-- `player` 服务配置、actor runtime 配置、MongoDB 配置占位
-- `channelActor / PlayerActor / WorldActor` 基础骨架
-- `PlayerActor` 首版 `PlayerMem + PlayerActionMem` MongoDB traceable 持久化骨架
-- `PlayerActor` 生命周期骨架：
-  - 初始化
-  - 在线绑定
-  - 空闲钝化
-  - flush
-- 单节点内“一玩家一 actor”语义
-- `kind + identity` 路由过渡层
-- `gateway -> world` 跨进程 actor 通信
 - `gateway -> player` 跨进程 actor 通信
+- `gateway -> world` 跨进程 actor 通信
 - `world -> player` 登录协同跨进程 actor 通信
 - `player -> world` / `player -> player` 统一远程出口骨架
-- 本地登录账号校验
-- 令牌签发与会话绑定
+- 本地账号登录校验
+- 玩家会话绑定与解绑
+- 顶号踢旧连接
 - 玩家进入场景
 - AOI 九宫格可见性计算
 - 基础怪物生成
 - 基础攻击与伤害结算
-- 世界事件广播
-
-## 当前未完成
-
-- 更完整的 `player -> world` / `player -> player` 业务消息
-- `world` 与 `portal` 的 MongoDB 持久化
-- 角色选择与多角色管理
-- 技能、Buff、掉落、背包、任务
-- 跨服、聊天、公会、邮件
-- Prometheus / Grafana / Tracing 等运维组件
+- 世界广播
+- `PlayerMem + PlayerActionMem` 持久化骨架
 
 ## 快速开始
 
 ### 环境要求
 
 - Go `1.25.x`
+- MongoDB（启动 `player` 服务时需要可连接的 MongoDB）
 
 ### 运行测试
 
@@ -130,81 +169,71 @@ go run ./cmd/gateway
 
 ## 配置说明
 
-默认配置位于 [configs/config.yaml](/D:/workspace/githut_repo/overmind/configs/config.yaml:1)，当前主要包含以下几类配置：
+默认配置位于 [configs/config.yaml](/D:/workspace/githut_repo/overmind/configs/config.yaml:1)。
+
+当前主要配置包括：
 
 - `services`
-  - 四个服务的名称、监听地址和端口
-- `actor`
-  - 按 `gateway / player / world` 拆分的 actor system 名称与节点地址
+  - 四个服务的监听地址与端口
+- `actors`
+  - `gateway / player / world` 的 actor 节点地址
 - `cluster`
-  - cluster 名称、provider 类型和 automanaged 发现地址
+  - cluster 名称、provider 与 discovery 地址
 - `mongo`
   - MongoDB 连接地址与数据库名
 - `world.scene`
   - 场景尺寸与 AOI 网格参数
 - `log`
-  - 日志级别与输出格式（`console` / `json`）
+  - 日志级别与输出格式
 
 ## 目录结构
 
 ```text
 api/proto/     # 协议定义
-cmd/           # 各服务启动入口
+cmd/           # 服务启动入口
 configs/       # 配置文件
-docs/          # 设计文档与实现计划
+docs/          # 设计文档
 internal/      # 核心实现
 pkg/           # 通用能力与 protobuf 生成代码
 scripts/       # 辅助脚本
 tools/         # 工具代码
 ```
 
-更关键的子目录包括：
+关键目录：
 
 - `internal/cluster`
-  - actor runtime、内部消息、identity 路由过渡层
+  - 集群运行时、实体路由、内部消息
 - `internal/gateway`
-  - WebSocket 传输层与 `channelActor`
+  - WebSocket 接入、协议编解码、ChannelActor
 - `internal/player`
-  - `PlayerActor`、玩家运行时、玩家服务
+  - PlayerActor、玩家数据与玩家服务
 - `internal/portal`
-  - 门户领域、仓储、服务
+  - 认证入口与账号服务
 - `internal/world`
-  - `WorldActor`、世界服务、世界仓储
+  - WorldActor、场景服务与世界逻辑
 - `internal/platform`
-  - 配置、日志、启动辅助
+  - 配置、日志、启动与基础设施
 
 ## 推荐阅读
 
-如果你想快速看懂当前 actor 迁移进度，建议从下面这些文件开始：
-
-- [cmd/gateway/main.go](/D:/workspace/githut_repo/overmind/cmd/gateway/main.go:1)
 - [internal/gateway/app/app.go](/D:/workspace/githut_repo/overmind/internal/gateway/app/app.go:1)
-- [cmd/player/main.go](/D:/workspace/githut_repo/overmind/cmd/player/main.go:1)
-- [internal/world/app/app.go](/D:/workspace/githut_repo/overmind/internal/world/app/app.go:1)
-- [internal/cluster/messages/messages.go](/D:/workspace/githut_repo/overmind/internal/cluster/messages/messages.go:1)
-- [internal/cluster/messages/world_dispatch.go](/D:/workspace/githut_repo/overmind/internal/cluster/messages/world_dispatch.go:1)
-- [internal/cluster/messages/player_session.go](/D:/workspace/githut_repo/overmind/internal/cluster/messages/player_session.go:1)
-- [internal/cluster/runtime/router.go](/D:/workspace/githut_repo/overmind/internal/cluster/runtime/router.go:1)
-- [internal/cluster/runtime/cluster_runtime.go](/D:/workspace/githut_repo/overmind/internal/cluster/runtime/cluster_runtime.go:1)
-- [internal/cluster/runtime/local_virtual_cluster.go](/D:/workspace/githut_repo/overmind/internal/cluster/runtime/local_virtual_cluster.go:1)
-- [internal/cluster/runtime/remote.go](/D:/workspace/githut_repo/overmind/internal/cluster/runtime/remote.go:1)
 - [internal/gateway/actor/channel_actor.go](/D:/workspace/githut_repo/overmind/internal/gateway/actor/channel_actor.go:1)
-- [internal/gateway/playerproxy/remote_client.go](/D:/workspace/githut_repo/overmind/internal/gateway/playerproxy/remote_client.go:1)
-- [internal/gateway/worldproxy/remote_client.go](/D:/workspace/githut_repo/overmind/internal/gateway/worldproxy/remote_client.go:1)
+- [internal/gateway/protocol/packet.go](/D:/workspace/githut_repo/overmind/internal/gateway/protocol/packet.go:1)
+- [internal/player/app/app.go](/D:/workspace/githut_repo/overmind/internal/player/app/app.go:1)
 - [internal/player/actor/player_actor.go](/D:/workspace/githut_repo/overmind/internal/player/actor/player_actor.go:1)
+- [internal/world/app/app.go](/D:/workspace/githut_repo/overmind/internal/world/app/app.go:1)
 - [internal/world/actor/world_actor.go](/D:/workspace/githut_repo/overmind/internal/world/actor/world_actor.go:1)
-- [internal/world/service/scene_service.go](/D:/workspace/githut_repo/overmind/internal/world/service/scene_service.go:1)
+- [internal/cluster/runtime/router.go](/D:/workspace/githut_repo/overmind/internal/cluster/runtime/router.go:1)
+- [api/proto/kit/envelope.proto](/D:/workspace/githut_repo/overmind/api/proto/kit/envelope.proto:1)
 
 ## 路线图
 
-接下来最直接的演进方向是：
+- 将 `ws_server` 的登录与业务分发切入 `ChannelActor`
+- 补齐 `player -> world` / `player -> player` 的业务消息
+- 完善 `world` 与 `portal` 的持久化能力
+- 扩展建筑、科技、部队、任务、邮件等 SLG 核心系统
+- 完善负载拆分、区域划分与世界侧调度能力
 
-1. 把 `ws_server` 的登录和业务分发真正切到 `channelActor`
-2. 在 `Envelope + protobuf` 之上继续补 `player -> world` / `player -> player` 的业务消息
-3. 把 `ws_server` 真正收口到 `channelActor`，让 gateway 更接近 `antares-main`
-4. 把 MongoDB 的数据加载、脏追踪和 flush 模型接进来
-5. 让 `portal` 彻底退出第一版热链路，只保留外围入口能力
-
-## 许可证
+## License
 
 本项目采用 [Apache License 2.0](/D:/workspace/githut_repo/overmind/LICENSE:1)。

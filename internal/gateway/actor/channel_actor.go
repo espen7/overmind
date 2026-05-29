@@ -19,18 +19,21 @@ type PlayerRouter interface {
 
 type Option func(*ChannelActor)
 
-type LoginFrame struct {
+// LoginCommand 是 channelActor 进程内的本地命令，不是跨进程 Envelope。
+type LoginCommand struct {
 	WorldID int64
 	Account string
 }
 
-// ClientPlayerEnvelope 表示这条客户端消息应该投递给玩家私有 actor。
-type ClientPlayerEnvelope struct {
+// RouteToPlayerCommand 表示这条客户端消息应该投递给玩家私有 actor。
+// 这里仍然是进程内命令消息，不承担跨进程序列化职责。
+type RouteToPlayerCommand struct {
 	Payload any
 }
 
-// ClientWorldEnvelope 表示这条客户端消息应该投递给世界 actor。
-type ClientWorldEnvelope struct {
+// RouteToWorldCommand 表示这条客户端消息应该投递给世界 actor。
+// 这里仍然是进程内命令消息，不是 RpcEnvelope。
+type RouteToWorldCommand struct {
 	Payload any
 }
 
@@ -72,7 +75,7 @@ func WithPlayerRouter(router PlayerRouter) Option {
 
 func (c *ChannelActor) Receive(ctx protoactor.Context) {
 	switch msg := ctx.Message().(type) {
-	case LoginFrame:
+	case LoginCommand:
 		envelope, err := clustermsg.NewWorldLoginEnvelope(&kitpb.WorldLoginRequest{
 			WorldId: msg.WorldID,
 			Account: msg.Account,
@@ -94,12 +97,12 @@ func (c *ChannelActor) Receive(ctx protoactor.Context) {
 		}
 		c.bindPlayer(msg.PlayerID)
 
-	case ClientPlayerEnvelope:
+	case RouteToPlayerCommand:
 		if err := c.forwardPlayer(ctx, msg.Payload); err != nil {
 			ctx.Send(ctx.Self(), fmt.Errorf("forward player message: %w", err))
 		}
 
-	case ClientWorldEnvelope:
+	case RouteToWorldCommand:
 		ctx.Send(c.worldPID, msg.Payload)
 	}
 }
