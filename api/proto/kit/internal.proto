@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package kit;
+
+option go_package = "overmind/pkg/pb/kit";
+
+// WorldRouteRequest 是 gateway 发给 world 的统一路由请求。
+// msg_type 仍然沿用客户端协议号，payload 则承载真正的 protobuf 消息体。
+message WorldRouteRequest {
+    int64 player_id = 1;
+    int32 msg_type = 2;
+    bytes payload = 3;
+}
+
+// WorldEnterSceneRequest 对应“进入场景”这类需要 gateway 注入会话上下文的请求。
+message WorldEnterSceneRequest {
+    string player_name = 1;
+    int64 scene_id = 2;
+    int32 x = 3;
+    int32 y = 4;
+}
+
+// WorldDispatchBatch 是 world 回给 gateway 的统一批量投递结果。
+message WorldDispatchBatch {
+    repeated WorldDispatchMessage messages = 1;
+}
+
+message WorldDispatchMessage {
+    repeated int64 recipients = 1;
+    int32 msg_type = 2;
+    bytes payload = 3;
+}
+
+message WorldError {
+    string reason = 1;
+}
+
+// PlayerBindRequest 由 gateway 在登录成功后发给 player，用于建立“当前连接属于哪个玩家”的在线绑定。
+message PlayerBindRequest {
+    int64 player_id = 1;
+    int64 world_id = 2;
+    string account = 3;
+    string conn_id = 4;
+}
+
+message PlayerBindResponse {
+    int64 player_id = 1;
+    int64 world_id = 2;
+    string conn_id = 3;
+    string expired_conn_id = 4;
+}
+
+// PlayerUnbindRequest 由 gateway 在连接断开时发给 player，用于清理在线绑定。
+message PlayerUnbindRequest {
+    int64 player_id = 1;
+    string conn_id = 2;
+}
+
+message PlayerUnbindResponse {
+    int64 player_id = 1;
+    string conn_id = 2;
+}
+
+message PlayerError {
+    string reason = 1;
+}

@@ -11,11 +11,11 @@ import (
 type Runtime struct {
 	system *actor.ActorSystem
 	root   *actor.RootContext
-	config app.ActorConfig
+	config app.ActorNodeConfig
 }
 
 // New 当前先只封装本地 ActorSystem，后面接 protoactor remote/cluster 时继续沿用这里做统一入口。
-func New(cfg app.ActorConfig) *Runtime {
+func New(cfg app.ActorNodeConfig) *Runtime {
 	system := actor.NewActorSystem()
 	return &Runtime{
 		system: system,

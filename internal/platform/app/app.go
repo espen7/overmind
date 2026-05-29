@@ -31,10 +31,32 @@ type Services struct {
 	World   ServiceConfig `mapstructure:"world"`
 }
 
-type ActorConfig struct {
-	System string `mapstructure:"system"`
-	Host   string `mapstructure:"host"`
-	Port   int    `mapstructure:"port"`
+type ActorNodeConfig struct {
+	System        string `mapstructure:"system"`
+	Host          string `mapstructure:"host"`
+	Port          int    `mapstructure:"port"`
+	DiscoveryPort int    `mapstructure:"discovery_port"`
+}
+
+func (c ActorNodeConfig) Address() string {
+	host := c.Host
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	return fmt.Sprintf("%s:%d", host, c.Port)
+}
+
+type ActorNodes struct {
+	Gateway ActorNodeConfig `mapstructure:"gateway"`
+	Player  ActorNodeConfig `mapstructure:"player"`
+	World   ActorNodeConfig `mapstructure:"world"`
+}
+
+type ClusterConfig struct {
+	Name         string   `mapstructure:"name"`
+	Provider     string   `mapstructure:"provider"`
+	Hosts        []string `mapstructure:"hosts"`
+	RefreshTTLMS int      `mapstructure:"refresh_ttl_ms"`
 }
 
 type MongoConfig struct {
@@ -59,7 +81,8 @@ type LogConfig struct {
 
 type Config struct {
 	Services Services           `mapstructure:"services"`
-	Actor    ActorConfig        `mapstructure:"actor"`
+	Actors   ActorNodes         `mapstructure:"actors"`
+	Cluster  ClusterConfig      `mapstructure:"cluster"`
 	Mongo    MongoConfig        `mapstructure:"mongo"`
 	World    WorldRuntimeConfig `mapstructure:"world"`
 	Log      LogConfig          `mapstructure:"log"`
@@ -89,11 +112,40 @@ func (c Config) Validate() error {
 	if err := check("world", c.Services.World); err != nil {
 		return err
 	}
-	if c.Actor.System == "" {
-		return fmt.Errorf("actor.system is required")
+
+	checkActor := func(name string, node ActorNodeConfig) error {
+		if node.System == "" {
+			return fmt.Errorf("%s actor.system is required", name)
+		}
+		if node.Port <= 0 {
+			return fmt.Errorf("%s actor.port must be positive", name)
+		}
+		return nil
 	}
-	if c.Actor.Port <= 0 {
-		return fmt.Errorf("actor.port must be positive")
+
+	if err := checkActor("gateway", c.Actors.Gateway); err != nil {
+		return err
+	}
+	if err := checkActor("player", c.Actors.Player); err != nil {
+		return err
+	}
+	if err := checkActor("world", c.Actors.World); err != nil {
+		return err
+	}
+	if c.Cluster.Name == "" {
+		return fmt.Errorf("cluster.name is required")
+	}
+	if c.Cluster.Provider == "" {
+		return fmt.Errorf("cluster.provider is required")
+	}
+	if c.Cluster.Provider != "automanaged" {
+		return fmt.Errorf("unsupported cluster.provider %q", c.Cluster.Provider)
+	}
+	if len(c.Cluster.Hosts) == 0 {
+		return fmt.Errorf("cluster.hosts must not be empty")
+	}
+	if c.Cluster.RefreshTTLMS <= 0 {
+		return fmt.Errorf("cluster.refresh_ttl_ms must be positive")
 	}
 	if c.Mongo.URI == "" {
 		return fmt.Errorf("mongo.uri is required")

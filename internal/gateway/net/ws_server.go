@@ -10,10 +10,11 @@ import (
 	"github.com/gorilla/websocket"
 	"google.golang.org/protobuf/proto"
 
+	"overmind/internal/gateway/playerclient"
 	"overmind/internal/gateway/protocol"
+	"overmind/internal/gateway/worldclient"
 	"overmind/internal/platform/logging"
 	portaltransport "overmind/internal/portal/transport"
-	worldtransport "overmind/internal/world/transport"
 	portalpb "overmind/pkg/pb/portal"
 	worldpb "overmind/pkg/pb/world"
 )
@@ -27,15 +28,19 @@ type client struct {
 type WSServer struct {
 	addr          string
 	portalHandler *portaltransport.Handler
-	worldHandler  *worldtransport.Handler
+	playerClient  *playerclient.RemoteClient
+	worldClient   *worldclient.RemoteClient
 	httpServer    *http.Server
 	clients       sync.Map
 	players       sync.Map
 	nextID        uint64
 }
 
-// 这里仍然保留旧的 handler 直调链路，目的是让现有 websocket 能继续跑通。
-// 后续 actor 热链路接完后，handlePacket 会逐步切到 channelActor -> world/player。
+// gateway 现在只承担边缘接入职责:
+// 1. 负责 websocket 连接和协议编解码
+// 2. 登录时调用 portal 做认证
+// 3. 登录成功后调用 player 做在线会话绑定
+// 4. gameplay 消息再按领域路由到 world
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
@@ -44,11 +49,17 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func NewWSServer(addr string, portalHandler *portaltransport.Handler, worldHandler *worldtransport.Handler) *WSServer {
+func NewWSServer(
+	addr string,
+	portalHandler *portaltransport.Handler,
+	playerClient *playerclient.RemoteClient,
+	worldClient *worldclient.RemoteClient,
+) *WSServer {
 	return &WSServer{
 		addr:          addr,
 		portalHandler: portalHandler,
-		worldHandler:  worldHandler,
+		playerClient:  playerClient,
+		worldClient:   worldClient,
 	}
 }
 
@@ -81,7 +92,7 @@ func (s *WSServer) Stop(ctx context.Context) error {
 	return s.httpServer.Shutdown(ctx)
 }
 
-// serveWS owns a single client connection from upgrade to disconnect.
+// serveWS 管理单条连接从升级到断开的完整生命周期。
 func (s *WSServer) serveWS(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -95,10 +106,18 @@ func (s *WSServer) serveWS(w http.ResponseWriter, r *http.Request) {
 	}
 	s.clients.Store(connID, currentClient)
 	defer func() {
-		s.clients.Delete(connID)
-		if currentClient.session.PlayerID() != 0 {
-			s.players.Delete(currentClient.session.PlayerID())
+		if playerID := currentClient.session.PlayerID(); playerID != 0 {
+			if err := s.playerClient.UnbindSession(playerID, currentClient.session.ConnID()); err != nil {
+				logging.L().Warn(
+					"unbind player session failed",
+					logging.Error(err),
+					logging.String("conn_id", currentClient.session.ConnID()),
+					logging.Int64("player_id", playerID),
+				)
+			}
+			s.players.Delete(playerID)
 		}
+		s.clients.Delete(connID)
 		_ = conn.Close()
 	}()
 
@@ -131,7 +150,8 @@ func (s *WSServer) serveWS(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handlePacket keeps the gateway thin: decode, dispatch, and write back.
+// handlePacket 保持 gateway 只做薄分发:
+// 登录归 portal + player，世界行为归 world。
 func (s *WSServer) handlePacket(currentClient *client, packet protocol.Packet) error {
 	switch packet.Type {
 	case protocol.MessageTypeLoginRequest:
@@ -139,67 +159,84 @@ func (s *WSServer) handlePacket(currentClient *client, packet protocol.Packet) e
 		if err := proto.Unmarshal(packet.Payload, &req); err != nil {
 			return err
 		}
+
 		resp, err := s.portalHandler.Login(&req)
 		if err != nil {
 			return err
 		}
 		if resp.GetErrorCode() == 0 {
-			// 旧链路里仍然由 gateway 直接维护 playerID -> client 的映射，
-			// 方便 scene/world 返回广播结果时回写到对应连接。
+			bindResp, err := s.playerClient.BindSession(playerclient.BindInput{
+				PlayerID: resp.GetPlayerId(),
+				WorldID:  1,
+				Account:  req.GetUsername(),
+				ConnID:   currentClient.session.ConnID(),
+			})
+			if err != nil {
+				return err
+			}
+			if expiredConnID := bindResp.GetExpiredConnId(); expiredConnID != "" && expiredConnID != currentClient.session.ConnID() {
+				// 顶号场景下由 player 节点告知旧连接是谁，gateway 只负责把那条连接真正断开。
+				s.expireConn(expiredConnID)
+			}
+
 			currentClient.session.Bind(resp.GetPlayerId(), resp.GetToken())
 			currentClient.session.SetSpawn(resp.GetPlayerName(), resp.GetSceneId(), resp.GetX(), resp.GetY())
 			s.players.Store(resp.GetPlayerId(), currentClient)
 		}
 		return s.writeProto(currentClient, protocol.MessageTypeLoginResponse, resp)
+
 	case protocol.MessageTypeEnterScene:
 		x, y := currentClient.session.Spawn()
-		outbound, err := s.worldHandler.EnterScene(
-			currentClient.session.PlayerID(),
-			currentClient.session.PlayerName(),
-			currentClient.session.SceneID(),
-			x,
-			y,
-		)
+		outbound, err := s.worldClient.EnterScene(worldclient.EnterSceneInput{
+			PlayerID:   currentClient.session.PlayerID(),
+			PlayerName: currentClient.session.PlayerName(),
+			SceneID:    currentClient.session.SceneID(),
+			X:          x,
+			Y:          y,
+		})
 		if err != nil {
 			return err
 		}
 		return s.broadcast(outbound)
+
 	case protocol.MessageTypeMoveRequest:
 		var req worldpb.MoveRequest
 		if err := proto.Unmarshal(packet.Payload, &req); err != nil {
 			return err
 		}
-		outbound, err := s.worldHandler.Move(currentClient.session.PlayerID(), &req)
+		outbound, err := s.worldClient.Move(currentClient.session.PlayerID(), &req)
 		if err != nil {
 			return err
 		}
 		return s.broadcast(outbound)
+
 	case protocol.MessageTypeAttackRequest:
 		var req worldpb.AttackRequest
 		if err := proto.Unmarshal(packet.Payload, &req); err != nil {
 			return err
 		}
-		outbound, err := s.worldHandler.Attack(currentClient.session.PlayerID(), &req)
+		outbound, err := s.worldClient.Attack(currentClient.session.PlayerID(), &req)
 		if err != nil {
 			return err
 		}
 		return s.broadcast(outbound)
+
 	default:
 		return fmt.Errorf("unknown message type %d", packet.Type)
 	}
 }
 
-// broadcast fans a world event out to every visible player still connected.
-func (s *WSServer) broadcast(messages []worldtransport.Outbound) error {
+// broadcast 把 world 计算出的投递结果回写给当前仍在线的连接。
+func (s *WSServer) broadcast(messages []worldclient.Outbound) error {
 	for _, message := range messages {
 		for _, recipient := range message.Recipients {
-			// recipients 是 world 侧算好的可见玩家列表，gateway 这里只做纯转发。
 			value, ok := s.players.Load(recipient)
 			if !ok {
 				continue
 			}
+
 			target := value.(*client)
-			if err := s.writeProto(target, message.Type, message.Message); err != nil {
+			if err := s.writePayload(target, message.Type, message.Payload); err != nil {
 				return err
 			}
 		}
@@ -207,11 +244,27 @@ func (s *WSServer) broadcast(messages []worldtransport.Outbound) error {
 	return nil
 }
 
+func (s *WSServer) expireConn(connID string) {
+	value, ok := s.clients.Load(connID)
+	if !ok {
+		return
+	}
+
+	target := value.(*client)
+	target.mu.Lock()
+	defer target.mu.Unlock()
+	_ = target.conn.Close()
+}
+
 func (s *WSServer) writeProto(target *client, messageType uint16, msg proto.Message) error {
 	payload, err := proto.Marshal(msg)
 	if err != nil {
 		return err
 	}
+	return s.writePayload(target, messageType, payload)
+}
+
+func (s *WSServer) writePayload(target *client, messageType uint16, payload []byte) error {
 	packet := protocol.Encode(protocol.Packet{Type: messageType, Payload: payload})
 	target.mu.Lock()
 	defer target.mu.Unlock()

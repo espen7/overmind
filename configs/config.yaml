@@ -16,10 +16,30 @@ services:
     host: "127.0.0.1"
     port: 8083
 
-actor:
-  system: "overmind"
-  host: "127.0.0.1"
-  port: 9001
+actors:
+  gateway:
+    system: "overmind-gateway"
+    host: "127.0.0.1"
+    port: 9001
+    discovery_port: 0
+  player:
+    system: "overmind-player"
+    host: "127.0.0.1"
+    port: 9002
+    discovery_port: 6332
+  world:
+    system: "overmind-world"
+    host: "127.0.0.1"
+    port: 9003
+    discovery_port: 6333
+
+cluster:
+  name: "overmind-cluster"
+  provider: "automanaged"
+  hosts:
+    - "127.0.0.1:6332"
+    - "127.0.0.1:6333"
+  refresh_ttl_ms: 2000
 
 mongo:
   uri: "mongodb://127.0.0.1:27017"

@@ -22,6 +22,14 @@ func WorldIdentity(worldID int64) string {
 	return strconv.FormatInt(worldID, 10)
 }
 
+func WorldActorName(worldID int64) string {
+	return fmt.Sprintf("world-%s", WorldIdentity(worldID))
+}
+
+func PlayerActorName(playerID int64) string {
+	return fmt.Sprintf("player-%s", PlayerIdentity(playerID))
+}
+
 // Router 是“按 kind + identity 找唯一实体”的统一入口。
 // 这样业务侧不需要再把本地 PID 当成稳定地址。
 type Router struct {

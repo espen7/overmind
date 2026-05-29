@@ -9,6 +9,7 @@ import (
 
 	clustermsg "overmind/internal/cluster/messages"
 	playerservice "overmind/internal/player/service"
+	kitpb "overmind/pkg/pb/kit"
 )
 
 type PlayerActor struct {
@@ -29,8 +30,10 @@ type PlayerActor struct {
 	tickStop     chan struct{}
 }
 
-// PlayerActor 代表单个玩家的私有在线边界。
-// 第一版先把登录绑定、唯一实例和空闲钝化收敛到这里，后续再继续承接背包、建筑、科技等主数据。
+// PlayerActor 表示单个玩家的私有在线边界。
+// 当前它同时兼容两条链路：
+// 1. 旧的 world -> PlayerLoginReq 本地消息链路
+// 2. 新的 gateway -> player Envelope 远程绑定/解绑链路
 func New(playerID int64, loginService playerservice.LoginService, opts ...Option) *PlayerActor {
 	config := defaultConfig()
 	for _, opt := range opts {
@@ -100,6 +103,8 @@ func (p *PlayerActor) Receive(ctx protoactor.Context) {
 			return
 		}
 		p.handlePlayerLogin(ctx, msg)
+	case *kitpb.Envelope:
+		p.handleGatewayEnvelope(ctx, msg)
 	}
 }
 
@@ -116,24 +121,106 @@ func (p *PlayerActor) handlePlayerLogin(ctx protoactor.Context, msg clustermsg.P
 		return
 	}
 	p.dataManager.OnLogin(login)
+	p.rebindConnection(ctx, msg.ConnID, msg.ChannelPID)
 
-	if p.channelPID != nil && p.connID != "" && p.connID != msg.ConnID {
-		// 同一玩家重新登录时，旧连接会被显式标记为过期，
-		// 避免两个 channelActor 同时认为自己还拥有这名玩家。
-		ctx.Unwatch(p.channelPID)
-		ctx.Send(p.channelPID, clustermsg.ChannelExpired{ConnID: p.connID})
-	}
-
-	p.connID = msg.ConnID
-	p.channelPID = msg.ChannelPID
-	ctx.Watch(msg.ChannelPID)
-
-	// playerActor 接受这次绑定之后，才把最终成功结果回给 world/channel。
 	ctx.Respond(clustermsg.PlayerLoginResp{
 		PlayerID: login.PlayerID,
 		WorldID:  login.WorldID,
 		ConnID:   msg.ConnID,
 	})
+}
+
+func (p *PlayerActor) handleGatewayEnvelope(ctx protoactor.Context, envelope *kitpb.Envelope) {
+	mesh := envelope.GetMesh()
+	if mesh == nil {
+		ctx.Respond(clustermsg.NewPlayerErrorEnvelope("player envelope missing mesh payload"))
+		return
+	}
+
+	switch mesh.GetCmd() {
+	case clustermsg.MeshCmdPlayerBind:
+		p.handlePlayerBind(ctx, envelope)
+	case clustermsg.MeshCmdPlayerUnbind:
+		p.handlePlayerUnbind(ctx, envelope)
+	default:
+		ctx.Respond(clustermsg.NewPlayerErrorEnvelope("unsupported player mesh command"))
+	}
+}
+
+func (p *PlayerActor) handlePlayerBind(ctx protoactor.Context, envelope *kitpb.Envelope) {
+	request, err := clustermsg.DecodePlayerBindEnvelope(envelope)
+	if err != nil {
+		ctx.Respond(clustermsg.NewPlayerErrorEnvelope(err.Error()))
+		return
+	}
+
+	p.bindClusterIdentity(ctx)
+	if p.playerID == 0 {
+		p.playerID = request.GetPlayerId()
+	}
+	if request.GetPlayerId() != p.playerID {
+		ctx.Respond(clustermsg.NewPlayerErrorEnvelope("player actor identity mismatch"))
+		return
+	}
+	if p.shouldBuffer() {
+		p.startInitialization(ctx)
+		p.enqueue(ctx, envelope)
+		return
+	}
+	if p.stopping {
+		ctx.Respond(clustermsg.NewPlayerErrorEnvelope("player actor is stopping"))
+		return
+	}
+
+	login, err := p.loginService.Login(request.GetPlayerId(), request.GetWorldId(), request.GetAccount())
+	if err != nil {
+		ctx.Respond(clustermsg.NewPlayerErrorEnvelope(err.Error()))
+		return
+	}
+	p.dataManager.OnLogin(login)
+
+	expiredConnID := p.rebindConnection(ctx, request.GetConnId(), nil)
+	reply, err := clustermsg.NewPlayerBindResponseEnvelope(&kitpb.PlayerBindResponse{
+		PlayerId:      login.PlayerID,
+		WorldId:       login.WorldID,
+		ConnId:        request.GetConnId(),
+		ExpiredConnId: expiredConnID,
+	})
+	if err != nil {
+		ctx.Respond(clustermsg.NewPlayerErrorEnvelope(err.Error()))
+		return
+	}
+	ctx.Respond(reply)
+}
+
+func (p *PlayerActor) handlePlayerUnbind(ctx protoactor.Context, envelope *kitpb.Envelope) {
+	request, err := clustermsg.DecodePlayerUnbindEnvelope(envelope)
+	if err != nil {
+		ctx.Respond(clustermsg.NewPlayerErrorEnvelope(err.Error()))
+		return
+	}
+	if request.GetPlayerId() != 0 && p.playerID != 0 && request.GetPlayerId() != p.playerID {
+		ctx.Respond(clustermsg.NewPlayerErrorEnvelope("player actor identity mismatch"))
+		return
+	}
+
+	if p.connID == request.GetConnId() {
+		if p.channelPID != nil {
+			ctx.Unwatch(p.channelPID)
+			p.channelPID = nil
+		}
+		p.connID = ""
+	}
+
+	reply, err := clustermsg.NewPlayerUnbindResponseEnvelope(&kitpb.PlayerUnbindResponse{
+		PlayerId: p.playerID,
+		ConnId:   request.GetConnId(),
+	})
+	if err != nil {
+		ctx.Respond(clustermsg.NewPlayerErrorEnvelope(err.Error()))
+		return
+	}
+	ctx.Respond(reply)
 }
 
 func (p *PlayerActor) shouldBuffer() bool {
@@ -201,7 +288,7 @@ func (p *PlayerActor) handleTerminated(msg *protoactor.Terminated) {
 }
 
 func (p *PlayerActor) isOnline() bool {
-	return p.channelPID != nil
+	return p.connID != ""
 }
 
 func (p *PlayerActor) enqueue(ctx protoactor.Context, message interface{}) {
@@ -228,6 +315,10 @@ func (p *PlayerActor) rejectPending(ctx protoactor.Context, reason string) {
 	p.pending = nil
 	for _, item := range pending {
 		if item.sender != nil {
+			if _, ok := item.message.(*kitpb.Envelope); ok {
+				ctx.Send(item.sender, clustermsg.NewPlayerErrorEnvelope(reason))
+				continue
+			}
 			ctx.Send(item.sender, clustermsg.PlayerLoginRejected{Reason: reason})
 		}
 	}
@@ -285,4 +376,26 @@ func (p *PlayerActor) bindClusterIdentity(ctx protoactor.Context) {
 		return
 	}
 	p.playerID = playerID
+}
+
+func (p *PlayerActor) rebindConnection(ctx protoactor.Context, connID string, channelPID *protoactor.PID) string {
+	expiredConnID := ""
+	if p.connID != "" && p.connID != connID {
+		expiredConnID = p.connID
+		if p.channelPID != nil {
+			ctx.Unwatch(p.channelPID)
+			ctx.Send(p.channelPID, clustermsg.ChannelExpired{ConnID: p.connID})
+		}
+	}
+
+	if p.channelPID != nil && channelPID == nil {
+		ctx.Unwatch(p.channelPID)
+	}
+
+	p.connID = connID
+	p.channelPID = channelPID
+	if channelPID != nil {
+		ctx.Watch(channelPID)
+	}
+	return expiredConnID
 }

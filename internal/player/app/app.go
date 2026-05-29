@@ -85,7 +85,7 @@ func (a *PlayerApp) startMongo(ctx context.Context) error {
 }
 
 func (a *PlayerApp) startRuntime() error {
-	a.runtime = clusterruntime.New(a.cfg.Actor)
+	a.runtime = clusterruntime.New(a.cfg.Actors.Player)
 
 	playerRepository := playerrepo.NewMongoRepository(a.database)
 	playerKind := cluster.NewKind(
@@ -103,7 +103,7 @@ func (a *PlayerApp) startRuntime() error {
 
 	// 当前先启动本地 virtual cluster，把业务边界收敛到 kind + identity。
 	// 等后面接真正的 remote/provider 时，这层仍然由 PlayerApp 统一替换，不需要再改 main。
-	a.cluster = clusterruntime.StartLocalVirtualCluster(a.runtime.System(), a.cfg.Actor, playerKind)
+	a.cluster = clusterruntime.StartClusterMember(a.runtime.System(), a.cfg.Cluster, a.cfg.Actors.Player, playerKind)
 	return nil
 }
 

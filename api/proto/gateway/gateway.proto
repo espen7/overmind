@@ -7,15 +7,15 @@ option go_package = "overmind/pkg/pb/gateway";
 // MsgType 定义
 // 范围: 1000 - 1999 用于网关/登录相关消息
 enum MsgType {
-    NONE = 0;
-    HEARTBEAT = 1000;
-    HANDSHAKE_REQ = 1001;
-    HANDSHAKE_RESP = 1002;
-    LOGIN_REQ = 1003;    // 转发给 Portal
-    LOGIN_RESP = 1004;   // 从 Portal 转发
-    ENTER_GAME_REQ = 1005;
+    NONE            = 0;
+    HEARTBEAT       = 1000;
+    HANDSHAKE_REQ   = 1001;
+    HANDSHAKE_RESP  = 1002;
+    LOGIN_REQ       = 1003; // 转发给 Portal
+    LOGIN_RESP      = 1004; // 从 Portal 转发
+    ENTER_GAME_REQ  = 1005;
     ENTER_GAME_RESP = 1006;
-    KICK_NOTIFY = 1007;
+    KICK_NOTIFY     = 1007;
 }
 
 // Internal: Session 详情，从 Gateway 发送给 Portal/Game

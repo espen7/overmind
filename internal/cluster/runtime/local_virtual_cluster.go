@@ -15,7 +15,7 @@ import (
 // StartLocalVirtualCluster 启动一个单进程的 protoactor cluster。
 // 它不是最终的跨节点 provider，只是把代码结构先拉到“kind + identity”的路由模型上，
 // 方便后面无缝切到真正的 etcd/consul/memberlist provider。
-func StartLocalVirtualCluster(system *actor.ActorSystem, cfg app.ActorConfig, kinds ...*cluster.Kind) *cluster.Cluster {
+func StartLocalVirtualCluster(system *actor.ActorSystem, cfg app.ActorNodeConfig, kinds ...*cluster.Kind) *cluster.Cluster {
 	provider := newLocalProvider()
 	lookup := newLocalIdentityLookup()
 	config := cluster.Configure(

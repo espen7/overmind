@@ -32,7 +32,11 @@
 
 - `gateway`
   - 负责 WebSocket 接入、连接生命周期和 `channelActor`
-  - 当前仍保留一部分旧 `handler` 直调逻辑，正在继续迁移
+  - 当前已经不再直接装配 `world` 的 repository/service/handler
+  - 登录成功后会通过 cluster client 把连接绑定到 `player` 实体
+  - 进图、移动、战斗等世界消息改为通过 cluster client 转发到 `world` 实体
+  - `gateway <-> player` 当前统一走 `Envelope + protobuf`，用于会话绑定、解绑和顶号踢旧连接
+  - `gateway <-> world` 当前统一走 `Envelope + protobuf`，不再混用 JSON 返回体
 - `portal`
   - 负责轻量账号入口与令牌能力
   - 第一版不进入核心 actor 热链路
@@ -49,8 +53,10 @@
 
 - `PlayerActor` 按 `playerID` 建模
 - `WorldActor` 按 `worldID` 建模
-- 当前仓库已经有单进程 `local virtual cluster` 过渡实现
-- 后续会继续替换为真正的 `protoactor-go remote + cluster provider + 全局实体定位`
+- 当前仓库已经接入 `automanaged + disthash` 的 cluster provider 方案
+- `gateway` 作为 cluster client
+- `player` 与 `world` 作为 cluster member
+- 后续会继续补齐 `player/world` 之间的远程协同和 `channelActor` 热链路
 
 ## 当前已完成
 
@@ -65,6 +71,8 @@
   - flush
 - 单节点内“一玩家一 actor”语义
 - `kind + identity` 路由过渡层
+- `gateway -> world` 跨进程 actor 通信
+- `gateway -> player` 跨进程 actor 通信
 - 本地登录账号校验
 - 令牌签发与会话绑定
 - 玩家进入场景
@@ -75,8 +83,7 @@
 
 ## 当前未完成
 
-- 真正的跨节点 actor 远程通信
-- 基于 cluster provider 的全局唯一实体定位
+- `world -> player` 的跨进程 actor 协同
 - `world` 与 `portal` 的 MongoDB 持久化
 - 角色选择与多角色管理
 - 技能、Buff、掉落、背包、任务
@@ -124,7 +131,9 @@ go run ./cmd/gateway
 - `services`
   - 四个服务的名称、监听地址和端口
 - `actor`
-  - actor system 名称与节点地址
+  - 按 `gateway / player / world` 拆分的 actor system 名称与节点地址
+- `cluster`
+  - cluster 名称、provider 类型和 automanaged 发现地址
 - `mongo`
   - MongoDB 连接地址与数据库名
 - `world.scene`
@@ -165,11 +174,19 @@ tools/         # 工具代码
 如果你想快速看懂当前 actor 迁移进度，建议从下面这些文件开始：
 
 - [cmd/gateway/main.go](/D:/workspace/githut_repo/overmind/cmd/gateway/main.go:1)
+- [internal/gateway/app/app.go](/D:/workspace/githut_repo/overmind/internal/gateway/app/app.go:1)
 - [cmd/player/main.go](/D:/workspace/githut_repo/overmind/cmd/player/main.go:1)
+- [internal/world/app/app.go](/D:/workspace/githut_repo/overmind/internal/world/app/app.go:1)
 - [internal/cluster/messages/messages.go](/D:/workspace/githut_repo/overmind/internal/cluster/messages/messages.go:1)
+- [internal/cluster/messages/world_dispatch.go](/D:/workspace/githut_repo/overmind/internal/cluster/messages/world_dispatch.go:1)
+- [internal/cluster/messages/player_session.go](/D:/workspace/githut_repo/overmind/internal/cluster/messages/player_session.go:1)
 - [internal/cluster/runtime/router.go](/D:/workspace/githut_repo/overmind/internal/cluster/runtime/router.go:1)
+- [internal/cluster/runtime/cluster_runtime.go](/D:/workspace/githut_repo/overmind/internal/cluster/runtime/cluster_runtime.go:1)
 - [internal/cluster/runtime/local_virtual_cluster.go](/D:/workspace/githut_repo/overmind/internal/cluster/runtime/local_virtual_cluster.go:1)
+- [internal/cluster/runtime/remote.go](/D:/workspace/githut_repo/overmind/internal/cluster/runtime/remote.go:1)
 - [internal/gateway/actor/channel_actor.go](/D:/workspace/githut_repo/overmind/internal/gateway/actor/channel_actor.go:1)
+- [internal/gateway/playerclient/remote_client.go](/D:/workspace/githut_repo/overmind/internal/gateway/playerclient/remote_client.go:1)
+- [internal/gateway/worldclient/remote_client.go](/D:/workspace/githut_repo/overmind/internal/gateway/worldclient/remote_client.go:1)
 - [internal/player/actor/player_actor.go](/D:/workspace/githut_repo/overmind/internal/player/actor/player_actor.go:1)
 - [internal/world/actor/world_actor.go](/D:/workspace/githut_repo/overmind/internal/world/actor/world_actor.go:1)
 - [internal/world/service/scene_service.go](/D:/workspace/githut_repo/overmind/internal/world/service/scene_service.go:1)
@@ -179,8 +196,8 @@ tools/         # 工具代码
 接下来最直接的演进方向是：
 
 1. 把 `ws_server` 的登录和业务分发真正切到 `channelActor`
-2. 把当前单进程 `local virtual cluster` 替换成真正的 `cluster provider + remote`
-3. 让 `player/world` 全面按 `kind + identity` 做全局唯一实体路由
+2. 把 `player/world` 间协同也切到统一的 `Envelope + protobuf` actor 消息
+3. 把 `ws_server` 真正收口到 `channelActor`，让 gateway 更接近 `antares-main`
 4. 把 MongoDB 的数据加载、脏追踪和 flush 模型接进来
 5. 让 `portal` 彻底退出第一版热链路，只保留外围入口能力
 
