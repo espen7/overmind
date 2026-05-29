@@ -56,7 +56,8 @@
 - 当前仓库已经接入 `automanaged + disthash` 的 cluster provider 方案
 - `gateway` 作为 cluster client
 - `player` 与 `world` 作为 cluster member
-- 后续会继续补齐 `player/world` 之间的远程协同和 `channelActor` 热链路
+- `world -> player` 登录协同已经切到 `Envelope + protobuf`
+- 后续会继续补齐更多 `player/world` 业务协同和 `channelActor` 热链路
 
 ## 当前已完成
 
@@ -83,7 +84,7 @@
 
 ## 当前未完成
 
-- `world -> player` 的跨进程 actor 协同
+- 更完整的 `player -> world` / `player -> player` 业务消息
 - `world` 与 `portal` 的 MongoDB 持久化
 - 角色选择与多角色管理
 - 技能、Buff、掉落、背包、任务
@@ -196,7 +197,7 @@ tools/         # 工具代码
 接下来最直接的演进方向是：
 
 1. 把 `ws_server` 的登录和业务分发真正切到 `channelActor`
-2. 把 `player/world` 间协同也切到统一的 `Envelope + protobuf` actor 消息
+2. 在 `Envelope + protobuf` 之上继续补 `player -> world` / `player -> player` 的业务消息
 3. 把 `ws_server` 真正收口到 `channelActor`，让 gateway 更接近 `antares-main`
 4. 把 MongoDB 的数据加载、脏追踪和 flush 模型接进来
 5. 让 `portal` 彻底退出第一版热链路，只保留外围入口能力

@@ -115,13 +115,11 @@ func (p *PlayerActor) handlePlayerLogin(ctx protoactor.Context, msg clustermsg.P
 		return
 	}
 
-	login, err := p.loginService.Login(msg.PlayerID, msg.WorldID, msg.Account)
+	login, _, err := p.loginAndBind(ctx, msg.PlayerID, msg.WorldID, msg.Account, msg.ConnID, msg.ChannelPID)
 	if err != nil {
 		ctx.Respond(clustermsg.PlayerLoginRejected{Reason: err.Error()})
 		return
 	}
-	p.dataManager.OnLogin(login)
-	p.rebindConnection(ctx, msg.ConnID, msg.ChannelPID)
 
 	ctx.Respond(clustermsg.PlayerLoginResp{
 		PlayerID: login.PlayerID,
@@ -138,6 +136,8 @@ func (p *PlayerActor) handleGatewayEnvelope(ctx protoactor.Context, envelope *ki
 	}
 
 	switch mesh.GetCmd() {
+	case clustermsg.MeshCmdPlayerLogin:
+		p.handlePlayerLoginEnvelope(ctx, envelope)
 	case clustermsg.MeshCmdPlayerBind:
 		p.handlePlayerBind(ctx, envelope)
 	case clustermsg.MeshCmdPlayerUnbind:
@@ -145,6 +145,50 @@ func (p *PlayerActor) handleGatewayEnvelope(ctx protoactor.Context, envelope *ki
 	default:
 		ctx.Respond(clustermsg.NewPlayerErrorEnvelope("unsupported player mesh command"))
 	}
+}
+
+func (p *PlayerActor) handlePlayerLoginEnvelope(ctx protoactor.Context, envelope *kitpb.Envelope) {
+	request, err := clustermsg.DecodePlayerLoginEnvelope(envelope)
+	if err != nil {
+		ctx.Respond(clustermsg.NewPlayerErrorEnvelope(err.Error()))
+		return
+	}
+
+	p.bindClusterIdentity(ctx)
+	if p.playerID == 0 {
+		p.playerID = request.GetPlayerId()
+	}
+	if request.GetPlayerId() != p.playerID {
+		ctx.Respond(clustermsg.NewPlayerErrorEnvelope("player actor identity mismatch"))
+		return
+	}
+	if p.shouldBuffer() {
+		p.startInitialization(ctx)
+		p.enqueue(ctx, envelope)
+		return
+	}
+	if p.stopping {
+		ctx.Respond(clustermsg.NewPlayerErrorEnvelope("player actor is stopping"))
+		return
+	}
+
+	login, expiredConnID, err := p.loginAndBind(ctx, request.GetPlayerId(), request.GetWorldId(), request.GetAccount(), request.GetConnId(), nil)
+	if err != nil {
+		ctx.Respond(clustermsg.NewPlayerErrorEnvelope(err.Error()))
+		return
+	}
+
+	reply, err := clustermsg.NewPlayerLoginResponseEnvelope(&kitpb.PlayerLoginResponse{
+		PlayerId:      login.PlayerID,
+		WorldId:       login.WorldID,
+		ConnId:        request.GetConnId(),
+		ExpiredConnId: expiredConnID,
+	})
+	if err != nil {
+		ctx.Respond(clustermsg.NewPlayerErrorEnvelope(err.Error()))
+		return
+	}
+	ctx.Respond(reply)
 }
 
 func (p *PlayerActor) handlePlayerBind(ctx protoactor.Context, envelope *kitpb.Envelope) {
@@ -172,14 +216,11 @@ func (p *PlayerActor) handlePlayerBind(ctx protoactor.Context, envelope *kitpb.E
 		return
 	}
 
-	login, err := p.loginService.Login(request.GetPlayerId(), request.GetWorldId(), request.GetAccount())
+	login, expiredConnID, err := p.loginAndBind(ctx, request.GetPlayerId(), request.GetWorldId(), request.GetAccount(), request.GetConnId(), nil)
 	if err != nil {
 		ctx.Respond(clustermsg.NewPlayerErrorEnvelope(err.Error()))
 		return
 	}
-	p.dataManager.OnLogin(login)
-
-	expiredConnID := p.rebindConnection(ctx, request.GetConnId(), nil)
 	reply, err := clustermsg.NewPlayerBindResponseEnvelope(&kitpb.PlayerBindResponse{
 		PlayerId:      login.PlayerID,
 		WorldId:       login.WorldID,
@@ -191,6 +232,16 @@ func (p *PlayerActor) handlePlayerBind(ctx protoactor.Context, envelope *kitpb.E
 		return
 	}
 	ctx.Respond(reply)
+}
+
+func (p *PlayerActor) loginAndBind(ctx protoactor.Context, ctxPlayerID int64, worldID int64, account string, connID string, channelPID *protoactor.PID) (playerservice.LoginResult, string, error) {
+	login, err := p.loginService.Login(ctxPlayerID, worldID, account)
+	if err != nil {
+		return playerservice.LoginResult{}, "", err
+	}
+	p.dataManager.OnLogin(login)
+	expiredConnID := p.rebindConnection(ctx, connID, channelPID)
+	return login, expiredConnID, nil
 }
 
 func (p *PlayerActor) handlePlayerUnbind(ctx protoactor.Context, envelope *kitpb.Envelope) {

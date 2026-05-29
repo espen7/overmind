@@ -1,7 +1,6 @@
 package playerclient
 
 import (
-	"fmt"
 	"time"
 
 	clustermsg "overmind/internal/cluster/messages"
@@ -70,7 +69,7 @@ func (c *RemoteClient) UnbindSession(playerID int64, connID string) error {
 }
 
 func (c *RemoteClient) request(playerID int64, message *kitpb.Envelope) (*kitpb.Envelope, error) {
-	future, err := c.router.RequestFuture(
+	reply, err := c.router.RequestEnvelope(
 		clusterruntime.PlayerKind,
 		clusterruntime.PlayerIdentity(playerID),
 		message,
@@ -78,16 +77,6 @@ func (c *RemoteClient) request(playerID int64, message *kitpb.Envelope) (*kitpb.
 	)
 	if err != nil {
 		return nil, err
-	}
-
-	result, err := future.Result()
-	if err != nil {
-		return nil, fmt.Errorf("request player actor: %w", err)
-	}
-
-	reply, ok := result.(*kitpb.Envelope)
-	if !ok {
-		return nil, fmt.Errorf("unexpected player reply %T", result)
 	}
 	return reply, nil
 }

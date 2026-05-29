@@ -88,7 +88,7 @@ func (c *RemoteClient) request(route *kitpb.WorldRouteRequest) ([]Outbound, erro
 	if err != nil {
 		return nil, err
 	}
-	future, err := c.router.RequestFuture(
+	reply, err := c.router.RequestEnvelope(
 		clusterruntime.WorldKind,
 		clusterruntime.WorldIdentity(c.worldID),
 		envelope,
@@ -96,16 +96,6 @@ func (c *RemoteClient) request(route *kitpb.WorldRouteRequest) ([]Outbound, erro
 	)
 	if err != nil {
 		return nil, err
-	}
-
-	result, err := future.Result()
-	if err != nil {
-		return nil, fmt.Errorf("request world actor: %w", err)
-	}
-
-	reply, ok := result.(*kitpb.Envelope)
-	if !ok {
-		return nil, fmt.Errorf("unexpected world reply %T", result)
 	}
 
 	mesh := reply.GetMesh()

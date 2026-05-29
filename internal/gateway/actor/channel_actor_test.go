@@ -7,21 +7,30 @@ import (
 	protoactor "github.com/asynkron/protoactor-go/actor"
 
 	clustermsg "overmind/internal/cluster/messages"
+	kitpb "overmind/pkg/pb/kit"
 )
 
 func TestChannelActorRoutesLoginToWorld(t *testing.T) {
 	system := protoactor.NewActorSystem()
-	worldMessages := make(chan clustermsg.WorldLoginReq, 1)
+	worldMessages := make(chan *kitpb.WorldLoginRequest, 1)
 
 	worldPID := system.Root.Spawn(protoactor.PropsFromFunc(func(ctx protoactor.Context) {
 		switch msg := ctx.Message().(type) {
-		case clustermsg.WorldLoginReq:
-			worldMessages <- msg
-			ctx.Respond(clustermsg.PlayerLoginResp{
-				PlayerID: 1001,
-				WorldID:  msg.WorldID,
-				ConnID:   msg.ConnID,
+		case *kitpb.Envelope:
+			request, err := clustermsg.DecodeWorldLoginEnvelope(msg)
+			if err != nil {
+				t.Fatalf("decode world login envelope: %v", err)
+			}
+			worldMessages <- request
+			reply, err := clustermsg.NewWorldLoginResponseEnvelope(&kitpb.WorldLoginResponse{
+				PlayerId: 1001,
+				WorldId:  request.GetWorldId(),
+				ConnId:   request.GetConnId(),
 			})
+			if err != nil {
+				t.Fatalf("encode world login response: %v", err)
+			}
+			ctx.Respond(reply)
 		}
 	}))
 
@@ -36,17 +45,14 @@ func TestChannelActorRoutesLoginToWorld(t *testing.T) {
 
 	select {
 	case msg := <-worldMessages:
-		if msg.WorldID != 7 {
-			t.Fatalf("expected world id 7, got %d", msg.WorldID)
+		if msg.GetWorldId() != 7 {
+			t.Fatalf("expected world id 7, got %d", msg.GetWorldId())
 		}
-		if msg.Account != "demo" {
-			t.Fatalf("expected account demo, got %q", msg.Account)
+		if msg.GetAccount() != "demo" {
+			t.Fatalf("expected account demo, got %q", msg.GetAccount())
 		}
-		if msg.ConnID != "conn-1" {
-			t.Fatalf("expected conn id conn-1, got %q", msg.ConnID)
-		}
-		if msg.ChannelPID == nil {
-			t.Fatal("expected channel pid to be attached")
+		if msg.GetConnId() != "conn-1" {
+			t.Fatalf("expected conn id conn-1, got %q", msg.GetConnId())
 		}
 	case <-time.After(time.Second):
 		t.Fatal("expected login request to reach world actor")
@@ -71,11 +77,15 @@ func TestChannelActorRoutesPlayerEnvelopeAfterAuthorization(t *testing.T) {
 		return nil
 	}))
 
-	system.Root.Send(pid, clustermsg.PlayerLoginResp{
-		PlayerID: 1001,
-		WorldID:  7,
-		ConnID:   "conn-2",
+	reply, err := clustermsg.NewWorldLoginResponseEnvelope(&kitpb.WorldLoginResponse{
+		PlayerId: 1001,
+		WorldId:  7,
+		ConnId:   "conn-2",
 	})
+	if err != nil {
+		t.Fatalf("encode world login response: %v", err)
+	}
+	system.Root.Send(pid, reply)
 	system.Root.Send(pid, ClientPlayerEnvelope{Payload: "march"})
 
 	select {

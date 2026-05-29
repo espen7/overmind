@@ -21,8 +21,8 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// WorldRouteRequest 是 gateway 发给 world 的统一路由请求。
-// msg_type 仍然沿用客户端协议号，payload 则承载真正的 protobuf 消息体。
+// WorldRouteRequest 是发给 world 实体的统一路由请求。
+// msg_type 继续沿用客户端协议号，payload 承载真正的 protobuf 消息体。
 type WorldRouteRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	PlayerId      int64                  `protobuf:"varint,1,opt,name=player_id,json=playerId,proto3" json:"player_id,omitempty"`
@@ -152,7 +152,7 @@ func (x *WorldEnterSceneRequest) GetY() int32 {
 	return 0
 }
 
-// WorldDispatchBatch 是 world 回给 gateway 的统一批量投递结果。
+// WorldDispatchBatch 是 world 回给调用方的统一批量投递结果。
 type WorldDispatchBatch struct {
 	state         protoimpl.MessageState  `protogen:"open.v1"`
 	Messages      []*WorldDispatchMessage `protobuf:"bytes,1,rep,name=messages,proto3" json:"messages,omitempty"`
@@ -257,6 +257,127 @@ func (x *WorldDispatchMessage) GetPayload() []byte {
 	return nil
 }
 
+// WorldLoginRequest 对应 channel/gateway 发给 world 的登录第一跳。
+type WorldLoginRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WorldId       int64                  `protobuf:"varint,1,opt,name=world_id,json=worldId,proto3" json:"world_id,omitempty"`
+	Account       string                 `protobuf:"bytes,2,opt,name=account,proto3" json:"account,omitempty"`
+	ConnId        string                 `protobuf:"bytes,3,opt,name=conn_id,json=connId,proto3" json:"conn_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WorldLoginRequest) Reset() {
+	*x = WorldLoginRequest{}
+	mi := &file_api_proto_kit_internal_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WorldLoginRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WorldLoginRequest) ProtoMessage() {}
+
+func (x *WorldLoginRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_kit_internal_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WorldLoginRequest.ProtoReflect.Descriptor instead.
+func (*WorldLoginRequest) Descriptor() ([]byte, []int) {
+	return file_api_proto_kit_internal_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *WorldLoginRequest) GetWorldId() int64 {
+	if x != nil {
+		return x.WorldId
+	}
+	return 0
+}
+
+func (x *WorldLoginRequest) GetAccount() string {
+	if x != nil {
+		return x.Account
+	}
+	return ""
+}
+
+func (x *WorldLoginRequest) GetConnId() string {
+	if x != nil {
+		return x.ConnId
+	}
+	return ""
+}
+
+type WorldLoginResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PlayerId      int64                  `protobuf:"varint,1,opt,name=player_id,json=playerId,proto3" json:"player_id,omitempty"`
+	WorldId       int64                  `protobuf:"varint,2,opt,name=world_id,json=worldId,proto3" json:"world_id,omitempty"`
+	ConnId        string                 `protobuf:"bytes,3,opt,name=conn_id,json=connId,proto3" json:"conn_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WorldLoginResponse) Reset() {
+	*x = WorldLoginResponse{}
+	mi := &file_api_proto_kit_internal_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WorldLoginResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WorldLoginResponse) ProtoMessage() {}
+
+func (x *WorldLoginResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_kit_internal_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WorldLoginResponse.ProtoReflect.Descriptor instead.
+func (*WorldLoginResponse) Descriptor() ([]byte, []int) {
+	return file_api_proto_kit_internal_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *WorldLoginResponse) GetPlayerId() int64 {
+	if x != nil {
+		return x.PlayerId
+	}
+	return 0
+}
+
+func (x *WorldLoginResponse) GetWorldId() int64 {
+	if x != nil {
+		return x.WorldId
+	}
+	return 0
+}
+
+func (x *WorldLoginResponse) GetConnId() string {
+	if x != nil {
+		return x.ConnId
+	}
+	return ""
+}
+
 type WorldError struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Reason        string                 `protobuf:"bytes,1,opt,name=reason,proto3" json:"reason,omitempty"`
@@ -266,7 +387,7 @@ type WorldError struct {
 
 func (x *WorldError) Reset() {
 	*x = WorldError{}
-	mi := &file_api_proto_kit_internal_proto_msgTypes[4]
+	mi := &file_api_proto_kit_internal_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -278,7 +399,7 @@ func (x *WorldError) String() string {
 func (*WorldError) ProtoMessage() {}
 
 func (x *WorldError) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_kit_internal_proto_msgTypes[4]
+	mi := &file_api_proto_kit_internal_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -291,7 +412,7 @@ func (x *WorldError) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorldError.ProtoReflect.Descriptor instead.
 func (*WorldError) Descriptor() ([]byte, []int) {
-	return file_api_proto_kit_internal_proto_rawDescGZIP(), []int{4}
+	return file_api_proto_kit_internal_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *WorldError) GetReason() string {
@@ -301,7 +422,7 @@ func (x *WorldError) GetReason() string {
 	return ""
 }
 
-// PlayerBindRequest 由 gateway 在登录成功后发给 player，用于建立“当前连接属于哪个玩家”的在线绑定。
+// PlayerBindRequest 由 gateway 在登录成功后发给 player，用于建立在线会话绑定。
 type PlayerBindRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	PlayerId      int64                  `protobuf:"varint,1,opt,name=player_id,json=playerId,proto3" json:"player_id,omitempty"`
@@ -314,7 +435,7 @@ type PlayerBindRequest struct {
 
 func (x *PlayerBindRequest) Reset() {
 	*x = PlayerBindRequest{}
-	mi := &file_api_proto_kit_internal_proto_msgTypes[5]
+	mi := &file_api_proto_kit_internal_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -326,7 +447,7 @@ func (x *PlayerBindRequest) String() string {
 func (*PlayerBindRequest) ProtoMessage() {}
 
 func (x *PlayerBindRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_kit_internal_proto_msgTypes[5]
+	mi := &file_api_proto_kit_internal_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -339,7 +460,7 @@ func (x *PlayerBindRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlayerBindRequest.ProtoReflect.Descriptor instead.
 func (*PlayerBindRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_kit_internal_proto_rawDescGZIP(), []int{5}
+	return file_api_proto_kit_internal_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *PlayerBindRequest) GetPlayerId() int64 {
@@ -382,7 +503,7 @@ type PlayerBindResponse struct {
 
 func (x *PlayerBindResponse) Reset() {
 	*x = PlayerBindResponse{}
-	mi := &file_api_proto_kit_internal_proto_msgTypes[6]
+	mi := &file_api_proto_kit_internal_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -394,7 +515,7 @@ func (x *PlayerBindResponse) String() string {
 func (*PlayerBindResponse) ProtoMessage() {}
 
 func (x *PlayerBindResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_kit_internal_proto_msgTypes[6]
+	mi := &file_api_proto_kit_internal_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -407,7 +528,7 @@ func (x *PlayerBindResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlayerBindResponse.ProtoReflect.Descriptor instead.
 func (*PlayerBindResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_kit_internal_proto_rawDescGZIP(), []int{6}
+	return file_api_proto_kit_internal_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *PlayerBindResponse) GetPlayerId() int64 {
@@ -449,7 +570,7 @@ type PlayerUnbindRequest struct {
 
 func (x *PlayerUnbindRequest) Reset() {
 	*x = PlayerUnbindRequest{}
-	mi := &file_api_proto_kit_internal_proto_msgTypes[7]
+	mi := &file_api_proto_kit_internal_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -461,7 +582,7 @@ func (x *PlayerUnbindRequest) String() string {
 func (*PlayerUnbindRequest) ProtoMessage() {}
 
 func (x *PlayerUnbindRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_kit_internal_proto_msgTypes[7]
+	mi := &file_api_proto_kit_internal_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -474,7 +595,7 @@ func (x *PlayerUnbindRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlayerUnbindRequest.ProtoReflect.Descriptor instead.
 func (*PlayerUnbindRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_kit_internal_proto_rawDescGZIP(), []int{7}
+	return file_api_proto_kit_internal_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *PlayerUnbindRequest) GetPlayerId() int64 {
@@ -501,7 +622,7 @@ type PlayerUnbindResponse struct {
 
 func (x *PlayerUnbindResponse) Reset() {
 	*x = PlayerUnbindResponse{}
-	mi := &file_api_proto_kit_internal_proto_msgTypes[8]
+	mi := &file_api_proto_kit_internal_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -513,7 +634,7 @@ func (x *PlayerUnbindResponse) String() string {
 func (*PlayerUnbindResponse) ProtoMessage() {}
 
 func (x *PlayerUnbindResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_kit_internal_proto_msgTypes[8]
+	mi := &file_api_proto_kit_internal_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -526,7 +647,7 @@ func (x *PlayerUnbindResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlayerUnbindResponse.ProtoReflect.Descriptor instead.
 func (*PlayerUnbindResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_kit_internal_proto_rawDescGZIP(), []int{8}
+	return file_api_proto_kit_internal_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *PlayerUnbindResponse) GetPlayerId() int64 {
@@ -543,6 +664,143 @@ func (x *PlayerUnbindResponse) GetConnId() string {
 	return ""
 }
 
+// PlayerLoginRequest 对应 world 发给 player 的登录第二跳。
+type PlayerLoginRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PlayerId      int64                  `protobuf:"varint,1,opt,name=player_id,json=playerId,proto3" json:"player_id,omitempty"`
+	WorldId       int64                  `protobuf:"varint,2,opt,name=world_id,json=worldId,proto3" json:"world_id,omitempty"`
+	Account       string                 `protobuf:"bytes,3,opt,name=account,proto3" json:"account,omitempty"`
+	ConnId        string                 `protobuf:"bytes,4,opt,name=conn_id,json=connId,proto3" json:"conn_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlayerLoginRequest) Reset() {
+	*x = PlayerLoginRequest{}
+	mi := &file_api_proto_kit_internal_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlayerLoginRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlayerLoginRequest) ProtoMessage() {}
+
+func (x *PlayerLoginRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_kit_internal_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlayerLoginRequest.ProtoReflect.Descriptor instead.
+func (*PlayerLoginRequest) Descriptor() ([]byte, []int) {
+	return file_api_proto_kit_internal_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *PlayerLoginRequest) GetPlayerId() int64 {
+	if x != nil {
+		return x.PlayerId
+	}
+	return 0
+}
+
+func (x *PlayerLoginRequest) GetWorldId() int64 {
+	if x != nil {
+		return x.WorldId
+	}
+	return 0
+}
+
+func (x *PlayerLoginRequest) GetAccount() string {
+	if x != nil {
+		return x.Account
+	}
+	return ""
+}
+
+func (x *PlayerLoginRequest) GetConnId() string {
+	if x != nil {
+		return x.ConnId
+	}
+	return ""
+}
+
+type PlayerLoginResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PlayerId      int64                  `protobuf:"varint,1,opt,name=player_id,json=playerId,proto3" json:"player_id,omitempty"`
+	WorldId       int64                  `protobuf:"varint,2,opt,name=world_id,json=worldId,proto3" json:"world_id,omitempty"`
+	ConnId        string                 `protobuf:"bytes,3,opt,name=conn_id,json=connId,proto3" json:"conn_id,omitempty"`
+	ExpiredConnId string                 `protobuf:"bytes,4,opt,name=expired_conn_id,json=expiredConnId,proto3" json:"expired_conn_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlayerLoginResponse) Reset() {
+	*x = PlayerLoginResponse{}
+	mi := &file_api_proto_kit_internal_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlayerLoginResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlayerLoginResponse) ProtoMessage() {}
+
+func (x *PlayerLoginResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_kit_internal_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlayerLoginResponse.ProtoReflect.Descriptor instead.
+func (*PlayerLoginResponse) Descriptor() ([]byte, []int) {
+	return file_api_proto_kit_internal_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *PlayerLoginResponse) GetPlayerId() int64 {
+	if x != nil {
+		return x.PlayerId
+	}
+	return 0
+}
+
+func (x *PlayerLoginResponse) GetWorldId() int64 {
+	if x != nil {
+		return x.WorldId
+	}
+	return 0
+}
+
+func (x *PlayerLoginResponse) GetConnId() string {
+	if x != nil {
+		return x.ConnId
+	}
+	return ""
+}
+
+func (x *PlayerLoginResponse) GetExpiredConnId() string {
+	if x != nil {
+		return x.ExpiredConnId
+	}
+	return ""
+}
+
 type PlayerError struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Reason        string                 `protobuf:"bytes,1,opt,name=reason,proto3" json:"reason,omitempty"`
@@ -552,7 +810,7 @@ type PlayerError struct {
 
 func (x *PlayerError) Reset() {
 	*x = PlayerError{}
-	mi := &file_api_proto_kit_internal_proto_msgTypes[9]
+	mi := &file_api_proto_kit_internal_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -564,7 +822,7 @@ func (x *PlayerError) String() string {
 func (*PlayerError) ProtoMessage() {}
 
 func (x *PlayerError) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_kit_internal_proto_msgTypes[9]
+	mi := &file_api_proto_kit_internal_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -577,7 +835,7 @@ func (x *PlayerError) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlayerError.ProtoReflect.Descriptor instead.
 func (*PlayerError) Descriptor() ([]byte, []int) {
-	return file_api_proto_kit_internal_proto_rawDescGZIP(), []int{9}
+	return file_api_proto_kit_internal_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *PlayerError) GetReason() string {
@@ -609,7 +867,15 @@ const file_api_proto_kit_internal_proto_rawDesc = "" +
 	"recipients\x18\x01 \x03(\x03R\n" +
 	"recipients\x12\x19\n" +
 	"\bmsg_type\x18\x02 \x01(\x05R\amsgType\x12\x18\n" +
-	"\apayload\x18\x03 \x01(\fR\apayload\"$\n" +
+	"\apayload\x18\x03 \x01(\fR\apayload\"a\n" +
+	"\x11WorldLoginRequest\x12\x19\n" +
+	"\bworld_id\x18\x01 \x01(\x03R\aworldId\x12\x18\n" +
+	"\aaccount\x18\x02 \x01(\tR\aaccount\x12\x17\n" +
+	"\aconn_id\x18\x03 \x01(\tR\x06connId\"e\n" +
+	"\x12WorldLoginResponse\x12\x1b\n" +
+	"\tplayer_id\x18\x01 \x01(\x03R\bplayerId\x12\x19\n" +
+	"\bworld_id\x18\x02 \x01(\x03R\aworldId\x12\x17\n" +
+	"\aconn_id\x18\x03 \x01(\tR\x06connId\"$\n" +
 	"\n" +
 	"WorldError\x12\x16\n" +
 	"\x06reason\x18\x01 \x01(\tR\x06reason\"~\n" +
@@ -628,7 +894,17 @@ const file_api_proto_kit_internal_proto_rawDesc = "" +
 	"\aconn_id\x18\x02 \x01(\tR\x06connId\"L\n" +
 	"\x14PlayerUnbindResponse\x12\x1b\n" +
 	"\tplayer_id\x18\x01 \x01(\x03R\bplayerId\x12\x17\n" +
-	"\aconn_id\x18\x02 \x01(\tR\x06connId\"%\n" +
+	"\aconn_id\x18\x02 \x01(\tR\x06connId\"\x7f\n" +
+	"\x12PlayerLoginRequest\x12\x1b\n" +
+	"\tplayer_id\x18\x01 \x01(\x03R\bplayerId\x12\x19\n" +
+	"\bworld_id\x18\x02 \x01(\x03R\aworldId\x12\x18\n" +
+	"\aaccount\x18\x03 \x01(\tR\aaccount\x12\x17\n" +
+	"\aconn_id\x18\x04 \x01(\tR\x06connId\"\x8e\x01\n" +
+	"\x13PlayerLoginResponse\x12\x1b\n" +
+	"\tplayer_id\x18\x01 \x01(\x03R\bplayerId\x12\x19\n" +
+	"\bworld_id\x18\x02 \x01(\x03R\aworldId\x12\x17\n" +
+	"\aconn_id\x18\x03 \x01(\tR\x06connId\x12&\n" +
+	"\x0fexpired_conn_id\x18\x04 \x01(\tR\rexpiredConnId\"%\n" +
 	"\vPlayerError\x12\x16\n" +
 	"\x06reason\x18\x01 \x01(\tR\x06reasonB\x15Z\x13overmind/pkg/pb/kitb\x06proto3"
 
@@ -644,18 +920,22 @@ func file_api_proto_kit_internal_proto_rawDescGZIP() []byte {
 	return file_api_proto_kit_internal_proto_rawDescData
 }
 
-var file_api_proto_kit_internal_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_api_proto_kit_internal_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_api_proto_kit_internal_proto_goTypes = []any{
 	(*WorldRouteRequest)(nil),      // 0: kit.WorldRouteRequest
 	(*WorldEnterSceneRequest)(nil), // 1: kit.WorldEnterSceneRequest
 	(*WorldDispatchBatch)(nil),     // 2: kit.WorldDispatchBatch
 	(*WorldDispatchMessage)(nil),   // 3: kit.WorldDispatchMessage
-	(*WorldError)(nil),             // 4: kit.WorldError
-	(*PlayerBindRequest)(nil),      // 5: kit.PlayerBindRequest
-	(*PlayerBindResponse)(nil),     // 6: kit.PlayerBindResponse
-	(*PlayerUnbindRequest)(nil),    // 7: kit.PlayerUnbindRequest
-	(*PlayerUnbindResponse)(nil),   // 8: kit.PlayerUnbindResponse
-	(*PlayerError)(nil),            // 9: kit.PlayerError
+	(*WorldLoginRequest)(nil),      // 4: kit.WorldLoginRequest
+	(*WorldLoginResponse)(nil),     // 5: kit.WorldLoginResponse
+	(*WorldError)(nil),             // 6: kit.WorldError
+	(*PlayerBindRequest)(nil),      // 7: kit.PlayerBindRequest
+	(*PlayerBindResponse)(nil),     // 8: kit.PlayerBindResponse
+	(*PlayerUnbindRequest)(nil),    // 9: kit.PlayerUnbindRequest
+	(*PlayerUnbindResponse)(nil),   // 10: kit.PlayerUnbindResponse
+	(*PlayerLoginRequest)(nil),     // 11: kit.PlayerLoginRequest
+	(*PlayerLoginResponse)(nil),    // 12: kit.PlayerLoginResponse
+	(*PlayerError)(nil),            // 13: kit.PlayerError
 }
 var file_api_proto_kit_internal_proto_depIdxs = []int32{
 	3, // 0: kit.WorldDispatchBatch.messages:type_name -> kit.WorldDispatchMessage
@@ -677,7 +957,7 @@ func file_api_proto_kit_internal_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_proto_kit_internal_proto_rawDesc), len(file_api_proto_kit_internal_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

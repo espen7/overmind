@@ -87,42 +87,112 @@ func (w *WorldActor) Receive(ctx protoactor.Context) {
 	case clustermsg.WorldLoginReq:
 		w.handleWorldLogin(ctx, msg)
 	case *kitpb.Envelope:
-		w.handleGatewayEnvelope(ctx, msg)
+		w.handleEnvelope(ctx, msg)
 	}
 }
 
 func (w *WorldActor) handleWorldLogin(ctx protoactor.Context, msg clustermsg.WorldLoginReq) {
-	playerID, _, err := w.loginService.ResolvePlayer(msg.WorldID, msg.Account)
+	envelope, err := clustermsg.NewWorldLoginEnvelope(&kitpb.WorldLoginRequest{
+		WorldId: msg.WorldID,
+		Account: msg.Account,
+		ConnId:  msg.ConnID,
+	})
 	if err != nil {
 		ctx.Respond(clustermsg.WorldLoginRejected{Reason: err.Error()})
 		return
 	}
 
-	request := clustermsg.PlayerLoginReq{
-		PlayerID:   playerID,
-		WorldID:    msg.WorldID,
-		Account:    msg.Account,
-		ConnID:     msg.ConnID,
-		ChannelPID: msg.ChannelPID,
-	}
-
-	result, err := w.requestPlayer(ctx, playerID, request)
+	reply, err := w.handleWorldLoginEnvelope(ctx, envelope)
 	if err != nil {
 		ctx.Respond(clustermsg.WorldLoginRejected{Reason: err.Error()})
 		return
 	}
 
-	switch response := result.(type) {
-	case clustermsg.PlayerLoginResp:
-		ctx.Respond(response)
-	case clustermsg.PlayerLoginRejected:
-		ctx.Respond(clustermsg.WorldLoginRejected{Reason: response.Reason})
+	response, err := clustermsg.DecodeWorldLoginResponseEnvelope(reply)
+	if err != nil {
+		ctx.Respond(clustermsg.WorldLoginRejected{Reason: err.Error()})
+		return
+	}
+	ctx.Respond(clustermsg.PlayerLoginResp{
+		PlayerID: response.GetPlayerId(),
+		WorldID:  response.GetWorldId(),
+		ConnID:   response.GetConnId(),
+	})
+}
+
+func (w *WorldActor) handleEnvelope(ctx protoactor.Context, envelope *kitpb.Envelope) {
+	mesh := envelope.GetMesh()
+	if mesh == nil {
+		ctx.Respond(clustermsg.NewErrorEnvelope("world envelope missing mesh payload"))
+		return
+	}
+
+	switch mesh.GetCmd() {
+	case clustermsg.MeshCmdWorldLogin:
+		reply, err := w.handleWorldLoginEnvelope(ctx, envelope)
+		if err != nil {
+			ctx.Respond(clustermsg.NewErrorEnvelope(err.Error()))
+			return
+		}
+		ctx.Respond(reply)
+	case clustermsg.MeshCmdWorldRoute:
+		reply, err := w.dispatchGatewayEnvelope(ctx, envelope)
+		if err != nil {
+			ctx.Respond(clustermsg.NewErrorEnvelope(err.Error()))
+			return
+		}
+		ctx.Respond(reply)
 	default:
-		ctx.Respond(clustermsg.WorldLoginRejected{Reason: "unexpected player login response"})
+		ctx.Respond(clustermsg.NewErrorEnvelope("unsupported world mesh command"))
 	}
 }
 
-func (w *WorldActor) requestPlayer(ctx protoactor.Context, playerID int64, request clustermsg.PlayerLoginReq) (interface{}, error) {
+func (w *WorldActor) handleWorldLoginEnvelope(ctx protoactor.Context, envelope *kitpb.Envelope) (*kitpb.Envelope, error) {
+	request, err := clustermsg.DecodeWorldLoginEnvelope(envelope)
+	if err != nil {
+		return nil, err
+	}
+
+	playerID, _, err := w.loginService.ResolvePlayer(request.GetWorldId(), request.GetAccount())
+	if err != nil {
+		return nil, err
+	}
+
+	loginEnvelope, err := clustermsg.NewPlayerLoginEnvelope(&kitpb.PlayerLoginRequest{
+		PlayerId: playerID,
+		WorldId:  request.GetWorldId(),
+		Account:  request.GetAccount(),
+		ConnId:   request.GetConnId(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := w.requestPlayer(ctx, playerID, loginEnvelope)
+	if err != nil {
+		return nil, err
+	}
+
+	reply, ok := result.(*kitpb.Envelope)
+	if !ok {
+		return nil, fmt.Errorf("unexpected player login reply %T", result)
+	}
+	if mesh := reply.GetMesh(); mesh != nil && mesh.GetCmd() == clustermsg.MeshCmdPlayerError {
+		return nil, clustermsg.DecodePlayerErrorEnvelope(reply)
+	}
+
+	loginResponse, err := clustermsg.DecodePlayerLoginResponseEnvelope(reply)
+	if err != nil {
+		return nil, err
+	}
+	return clustermsg.NewWorldLoginResponseEnvelope(&kitpb.WorldLoginResponse{
+		PlayerId: loginResponse.GetPlayerId(),
+		WorldId:  loginResponse.GetWorldId(),
+		ConnId:   loginResponse.GetConnId(),
+	})
+}
+
+func (w *WorldActor) requestPlayer(ctx protoactor.Context, playerID int64, request *kitpb.Envelope) (interface{}, error) {
 	if w.playerRouter != nil {
 		future, err := w.playerRouter.RequestFuture(playerID, request, time.Second)
 		if err != nil {
@@ -136,15 +206,6 @@ func (w *WorldActor) requestPlayer(ctx protoactor.Context, playerID int64, reque
 		return nil, fmt.Errorf("player actor not available")
 	}
 	return ctx.RequestFuture(playerPID, request, time.Second).Result()
-}
-
-func (w *WorldActor) handleGatewayEnvelope(ctx protoactor.Context, envelope *kitpb.Envelope) {
-	reply, err := w.dispatchGatewayEnvelope(ctx, envelope)
-	if err != nil {
-		ctx.Respond(clustermsg.NewErrorEnvelope(err.Error()))
-		return
-	}
-	ctx.Respond(reply)
 }
 
 func (w *WorldActor) dispatchGatewayEnvelope(ctx protoactor.Context, envelope *kitpb.Envelope) (*kitpb.Envelope, error) {

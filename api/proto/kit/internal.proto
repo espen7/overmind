@@ -4,8 +4,8 @@ package kit;
 
 option go_package = "overmind/pkg/pb/kit";
 
-// WorldRouteRequest 是 gateway 发给 world 的统一路由请求。
-// msg_type 仍然沿用客户端协议号，payload 则承载真正的 protobuf 消息体。
+// WorldRouteRequest 是发给 world 实体的统一路由请求。
+// msg_type 继续沿用客户端协议号，payload 承载真正的 protobuf 消息体。
 message WorldRouteRequest {
     int64 player_id = 1;
     int32 msg_type = 2;
@@ -20,7 +20,7 @@ message WorldEnterSceneRequest {
     int32 y = 4;
 }
 
-// WorldDispatchBatch 是 world 回给 gateway 的统一批量投递结果。
+// WorldDispatchBatch 是 world 回给调用方的统一批量投递结果。
 message WorldDispatchBatch {
     repeated WorldDispatchMessage messages = 1;
 }
@@ -31,11 +31,24 @@ message WorldDispatchMessage {
     bytes payload = 3;
 }
 
+// WorldLoginRequest 对应 channel/gateway 发给 world 的登录第一跳。
+message WorldLoginRequest {
+    int64 world_id = 1;
+    string account = 2;
+    string conn_id = 3;
+}
+
+message WorldLoginResponse {
+    int64 player_id = 1;
+    int64 world_id = 2;
+    string conn_id = 3;
+}
+
 message WorldError {
     string reason = 1;
 }
 
-// PlayerBindRequest 由 gateway 在登录成功后发给 player，用于建立“当前连接属于哪个玩家”的在线绑定。
+// PlayerBindRequest 由 gateway 在登录成功后发给 player，用于建立在线会话绑定。
 message PlayerBindRequest {
     int64 player_id = 1;
     int64 world_id = 2;
@@ -59,6 +72,21 @@ message PlayerUnbindRequest {
 message PlayerUnbindResponse {
     int64 player_id = 1;
     string conn_id = 2;
+}
+
+// PlayerLoginRequest 对应 world 发给 player 的登录第二跳。
+message PlayerLoginRequest {
+    int64 player_id = 1;
+    int64 world_id = 2;
+    string account = 3;
+    string conn_id = 4;
+}
+
+message PlayerLoginResponse {
+    int64 player_id = 1;
+    int64 world_id = 2;
+    string conn_id = 3;
+    string expired_conn_id = 4;
 }
 
 message PlayerError {

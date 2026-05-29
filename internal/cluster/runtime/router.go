@@ -7,6 +7,8 @@ import (
 
 	"github.com/asynkron/protoactor-go/actor"
 	"github.com/asynkron/protoactor-go/cluster"
+
+	kitpb "overmind/pkg/pb/kit"
 )
 
 const (
@@ -61,6 +63,26 @@ func (r *Router) RequestFuture(kind string, identity string, message interface{}
 		return nil, fmt.Errorf("cluster router not initialized")
 	}
 	return r.cluster.RequestFuture(identity, kind, message, cluster.WithTimeout(timeout))
+}
+
+// RequestEnvelope 把“请求某个实体并期待 Envelope 响应”收口成统一入口。
+// 这样 gateway/player/world 之间的跨进程通信都只围绕 kind + identity + protobuf envelope 展开。
+func (r *Router) RequestEnvelope(kind string, identity string, envelope *kitpb.Envelope, timeout time.Duration) (*kitpb.Envelope, error) {
+	future, err := r.RequestFuture(kind, identity, envelope, timeout)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := future.Result()
+	if err != nil {
+		return nil, err
+	}
+
+	reply, ok := result.(*kitpb.Envelope)
+	if !ok {
+		return nil, fmt.Errorf("unexpected envelope reply %T", result)
+	}
+	return reply, nil
 }
 
 type PlayerRouter struct {
