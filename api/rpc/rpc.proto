@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package api;
+
+option go_package = "overmind/api/rpc";
+
+// RPCEnvelope 内部节点间传递的消息包装外壳
+message RPCEnvelope {
+    int64  session_id = 1; // 网关的 Session ID
+    string player_id  = 2; // 玩家唯一 ID
+    int32  proto_id   = 3; // 业务协议号
+    bytes  payload    = 4; // 业务包体的二进制载荷
+}

@@ -1,0 +1,17 @@
+node:
+  name: "home1@127.0.0.1"
+  cookie: "overmind_secret_cookie"
+  listen_host: "127.0.0.1"
+  listen_port: 15002
+database:
+  uri: "mongodb://127.0.0.1:27017"
+  db_name: "overmind"
+  save_workers: 4
+  batch_size: 32
+routes:
+  - node_name: "gate@127.0.0.1"
+    host: "127.0.0.1"
+    port: 15001
+  - node_name: "world@127.0.0.1"
+    host: "127.0.0.1"
+    port: 15003

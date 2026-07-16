@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package api;
+
+option go_package = "overmind/api/game";
+
+// MsgID 定义客户端与服务端之间的协议号绑定枚举
+enum MsgID {
+    MSG_NONE = 0;
+    
+    // 基础系统 / 网关本地协议 (1000 - 9999)
+    MSG_C2S_LOGIN = 1001;
+    MSG_S2C_LOGIN_RES = 1002;
+    MSG_C2S_HEARTBEAT = 1003;
+    MSG_S2C_HEARTBEAT_RES = 1004;
+    
+    // 逻辑系统 / 玩家业务协议 (10000 - 19999)
+    MSG_S2C_SYNC_DATA = 10001;
+    MSG_C2S_BUILD_UPGRADE = 10005;
+    MSG_S2C_BUILD_UPGRADE_RES = 10006;
+    MSG_C2S_SUBSCRIBE_MAP = 10010;
+    MSG_S2C_MAP_BROADCAST = 10011;
+}
+
+// C2S_Login 客户端请求登录 (ProtoID: 1001)
+message C2S_Login {
+    string player_id = 1;
+    string token     = 2;
+}
+
+// S2C_LoginRes 服务端登录响应 (ProtoID: 1002)
+message S2C_LoginRes {
+    int32  code = 1; // 0 代表成功，非 0 代表失败
+    string msg  = 2;
+}
+
+// C2S_Heartbeat 客户端心跳请求 (ProtoID: 1003)
+message C2S_Heartbeat {
+    int64 client_time = 1;
+}
+
+// S2C_HeartbeatRes 服务端心跳响应 (ProtoID: 1004)
+message S2C_HeartbeatRes {
+    int64 server_time = 1;
+}
+
+// S2C_SyncData 服务端个人数据增量同步 (ProtoID: 10001)
+message S2C_SyncData {
+	int32           gold          = 1; // 金币最新值
+	int32           power         = 2; // 战力最新值
+	repeated string dirty_modules = 3; // 被污染的模块类型名称列表
+}
+
+// C2S_BuildUpgrade 客户端升级建筑请求 (ProtoID: 10005)
+message C2S_BuildUpgrade {
+    string build_id = 1;
+}
+
+// S2C_BuildUpgradeRes 服务端升级建筑响应 (ProtoID: 10006)
+message S2C_BuildUpgradeRes {
+    int32  code     = 1;
+    string build_id = 2;
+    int32  level    = 3;
+}

@@ -1,0 +1,117 @@
+package main
+
+import (
+	"log"
+	"net/url"
+	"time"
+
+	"github.com/gorilla/websocket"
+	"google.golang.org/protobuf/proto"
+
+	"overmind/api/game"
+	"overmind/internal/pkg/network"
+)
+
+func runClientSession(sessionName string, autoDisconnectSec int, shouldUpgrade bool) {
+	u := url.URL{Scheme: "ws", Host: "127.0.0.1:8080", Path: "/ws"}
+	log.Printf("[%s] 正在连接网关 %s...", sessionName, u.String())
+
+	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	if err != nil {
+		log.Fatalf("[%s] 连接失败: %v", sessionName, err)
+	}
+	defer conn.Close()
+	log.Printf("[%s] 连接建立成功!", sessionName)
+
+	// 启动后台消息读取协程
+	go func() {
+		for {
+			_, data, err := conn.ReadMessage()
+			if err != nil {
+				log.Printf("[%s Reader] 连接已断开: %v", sessionName, err)
+				return
+			}
+
+			packet, err := network.UnpackWS(data)
+			if err != nil {
+				log.Printf("[%s Reader] 解析回包错误: %v", sessionName, err)
+				continue
+			}
+
+			switch packet.ProtoID {
+			case int32(game.MsgID_MSG_S2C_LOGIN_RES):
+				res := &game.S2C_LoginRes{}
+				_ = proto.Unmarshal(packet.Payload, res)
+				log.Printf("[%s Reader] 收到登录响应 -> Code: %d, Msg: %s", sessionName, res.Code, res.Msg)
+			case int32(game.MsgID_MSG_S2C_HEARTBEAT_RES):
+				res := &game.S2C_HeartbeatRes{}
+				_ = proto.Unmarshal(packet.Payload, res)
+				log.Printf("[%s Reader] 收到心跳响应 -> ServerTime: %d", sessionName, res.ServerTime)
+			case int32(game.MsgID_MSG_S2C_BUILD_UPGRADE_RES):
+				res := &game.S2C_BuildUpgradeRes{}
+				_ = proto.Unmarshal(packet.Payload, res)
+				log.Printf("[%s Reader] 收到建筑升级响应 -> Code: %d, BuildId: %s, Level: %d", sessionName, res.Code, res.BuildId, res.Level)
+			case int32(game.MsgID_MSG_S2C_SYNC_DATA):
+				res := &game.S2C_SyncData{}
+				_ = proto.Unmarshal(packet.Payload, res)
+				log.Printf("[%s Reader] 收到增量脏数据同步 (S2C_SyncData) -> Gold: %d, Power: %d, DirtyModules: %v", sessionName, res.Gold, res.Power, res.DirtyModules)
+			case int32(game.MsgID_MSG_S2C_MAP_BROADCAST):
+				log.Printf("[%s Reader] 收到大地图广播 -> %s", sessionName, string(packet.Payload))
+			default:
+				log.Printf("[%s Reader] 收到其他数据包 -> ProtoID: %d, 载荷内容: %s", sessionName, packet.ProtoID, string(packet.Payload))
+			}
+		}
+	}()
+
+	// 1. 发送 C2S_Login (ProtoID: 1001)
+	log.Printf("[%s] 发送 C2S_Login...", sessionName)
+	loginReq := &game.C2S_Login{PlayerId: "test_player_999"}
+	loginBytes, _ := proto.Marshal(loginReq)
+	loginFrame, _ := network.PackWS(int32(game.MsgID_MSG_C2S_LOGIN), 1, loginBytes)
+	_ = conn.WriteMessage(websocket.BinaryMessage, loginFrame)
+
+	time.Sleep(1 * time.Second)
+
+	if shouldUpgrade {
+		// 2. 发送 C2S_BuildUpgrade (ProtoID: 10005)
+		log.Printf("[%s] 发送 C2S_BuildUpgrade...", sessionName)
+		upgradeReq := &game.C2S_BuildUpgrade{BuildId: "barracks_1"}
+		upgradeBytes, _ := proto.Marshal(upgradeReq)
+		upgradeFrame, _ := network.PackWS(int32(game.MsgID_MSG_C2S_BUILD_UPGRADE), 2, upgradeBytes)
+		_ = conn.WriteMessage(websocket.BinaryMessage, upgradeFrame)
+		time.Sleep(1 * time.Second)
+	}
+
+	// 3. 发送地图订阅请求 (AOI 模拟) (ProtoID: 10010)
+	log.Printf("[%s] 发送大地图 chunk_101 视野订阅...", sessionName)
+	subFrame, _ := network.PackWS(int32(game.MsgID_MSG_C2S_SUBSCRIBE_MAP), 3, []byte{})
+	_ = conn.WriteMessage(websocket.BinaryMessage, subFrame)
+
+	// 4. 发送心跳 C2S_Heartbeat
+	log.Printf("[%s] 发送心跳 C2S_Heartbeat...", sessionName)
+	hbReq := &game.C2S_Heartbeat{}
+	hbBytes, _ := proto.Marshal(hbReq)
+	hbFrame, _ := network.PackWS(int32(game.MsgID_MSG_C2S_HEARTBEAT), 4, hbBytes)
+	_ = conn.WriteMessage(websocket.BinaryMessage, hbFrame)
+
+	log.Printf("[%s] 等待收包中...", sessionName)
+	time.Sleep(time.Duration(autoDisconnectSec) * time.Second)
+
+	log.Printf("[%s] 会话结束，主动断开连接...", sessionName)
+}
+
+func main() {
+	log.Printf("================ [测试阶段 1: 首次登录与升级] ================")
+	runClientSession("Client-Session-1", 2, true)
+
+	log.Printf("==== [等待 2 秒（小于 5 秒卸载时长），模拟临时网络抖动后发起断线重连] ====")
+	time.Sleep(2 * time.Second)
+
+	log.Printf("================ [测试阶段 2: 重新登录并重连绑定] ================")
+	// 重新登录，此操作应触发 bind_gate 并撤销卸载定时器
+	runClientSession("Client-Session-2", 3, false)
+
+	log.Printf("================ [测试阶段 3: 最终断开连接，等待 6 秒验证超时卸载与 MongoDB 落盘] ================")
+	time.Sleep(6 * time.Second)
+	log.Printf("测试流程执行完成，退出。")
+}
