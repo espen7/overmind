@@ -21,13 +21,31 @@ type RouteConfig struct {
 	Port     uint16 `yaml:"port"`
 }
 
+// MongoConfig Mongo 连接配置 (gate/world 只读集群元数据, 无需存盘参数)
+type MongoConfig struct {
+	URI    string `yaml:"uri"`
+	DBName string `yaml:"db_name"`
+}
+
+// HomeRingConfig Home 节点一致性哈希环配置。
+// 仅作为首次部署播种/Mongo 不可达时的启动兜底; 运行期真相源是 Mongo 环文档 (ringctl 改环 + 轮询热切)。
+// Nodes 为当前环的物理节点列表；PrevNodes 为上一版环（在线扩容过渡期用于释放握手反查旧归属，平时为空）
+type HomeRingConfig struct {
+	Version   int      `yaml:"version"`
+	Nodes     []string `yaml:"nodes"`
+	PrevNodes []string `yaml:"prev_nodes"`
+}
+
 // GateConfig 网关节点专有配置
 type GateConfig struct {
 	Node      NodeConfig `yaml:"node"`
 	WebSocket struct {
 		ListenAddr string `yaml:"listen_addr"`
 	} `yaml:"websocket"`
-	Routes []RouteConfig `yaml:"routes"`
+	Database  MongoConfig    `yaml:"database"` // 集群环文档读取 (可缺省, 缺省时退化为 yaml 静态环)
+	Routes    []RouteConfig  `yaml:"routes"`
+	HomeRing  HomeRingConfig `yaml:"home_ring"`
+	WorldNode string         `yaml:"world_node"` // World 节点名, 用于寻址 world_actor
 }
 
 // HomeConfig 逻辑服节点专有配置
@@ -39,13 +57,17 @@ type HomeConfig struct {
 		SaveWorkers int    `yaml:"save_workers"`
 		BatchSize   int    `yaml:"batch_size"`
 	} `yaml:"database"`
-	Routes []RouteConfig `yaml:"routes"`
+	Routes    []RouteConfig  `yaml:"routes"`
+	HomeRing  HomeRingConfig `yaml:"home_ring"`
+	WorldNode string         `yaml:"world_node"` // World 节点名, 用于寻址 world_actor
 }
 
 // WorldConfig 地图服节点专有配置
 type WorldConfig struct {
-	Node   NodeConfig    `yaml:"node"`
-	Routes []RouteConfig `yaml:"routes"`
+	Node     NodeConfig     `yaml:"node"`
+	Database MongoConfig    `yaml:"database"` // 集群环文档读取 (可缺省, 缺省时退化为 yaml 静态环)
+	Routes   []RouteConfig  `yaml:"routes"`
+	HomeRing HomeRingConfig `yaml:"home_ring"` // world → home 主动通知时的归属寻址
 }
 
 // LoadGateConfig 载入网关配置

@@ -8,6 +8,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
 	"overmind/internal/pkg/storage"
 )
@@ -37,8 +38,10 @@ func (m *PlayerModel) Sections() []storage.Section {
 	return m.sections
 }
 
-// Load 从 MongoDB 加载玩家数据，如果不存在则创建默认数据并插入
-// 返回 true 表示是新建玩家
+// Load 从 MongoDB 加载玩家数据，如果不存在则创建默认数据并写入
+// 返回 true 表示是新建玩家。
+// 注意：由于 Coordinator 在 Spawn 前会先 AcquireOwnership (upsert 预创建仅含
+// _id/epoch/owner_node 的文档)，文档存在但缺少 profile 分区同样视为新玩家。
 func (m *PlayerModel) Load() (isNew bool, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -46,7 +49,7 @@ func (m *PlayerModel) Load() (isNew bool, err error) {
 	var doc bson.M
 	err = storage.PlayerCol.FindOne(ctx, bson.M{"_id": m.PlayerID}).Decode(&doc)
 
-	if err == mongo.ErrNoDocuments {
+	if err == mongo.ErrNoDocuments || (err == nil && doc["profile"] == nil) {
 		// 新玩家，填充默认数据
 		m.initDefaults()
 
@@ -135,19 +138,23 @@ func (m *PlayerModel) insertNew() error {
 	_ = bson.UnmarshalExtJSON(bagData, true, &bagDoc)
 	_ = bson.UnmarshalExtJSON(buildsData, true, &buildsDoc)
 
-	newDoc := bson.M{
-		"_id":        m.PlayerID,
-		"profile":    profileDoc,
-		"bag":        bagDoc,
-		"builds":     buildsDoc,
-		"created_at": time.Now(),
-		"updated_at": time.Now(),
+	// 用 $set + upsert 而非 InsertOne：文档可能已由 AcquireOwnership 预创建，
+	// 不能覆盖其中的 epoch/owner_node 围栏字段
+	update := bson.M{
+		"$set": bson.M{
+			"profile":    profileDoc,
+			"bag":        bagDoc,
+			"builds":     buildsDoc,
+			"created_at": time.Now(),
+			"updated_at": time.Now(),
+		},
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	_, err := storage.PlayerCol.InsertOne(ctx, newDoc)
+	opts := options.UpdateOne().SetUpsert(true)
+	_, err := storage.PlayerCol.UpdateOne(ctx, bson.M{"_id": m.PlayerID}, update, opts)
 	if err != nil {
 		log.Printf("[PlayerModel] 创建新玩家档案失败: %v", err)
 	}
@@ -157,8 +164,18 @@ func (m *PlayerModel) insertNew() error {
 func (m *PlayerModel) loadFromDoc(doc bson.M) {
 	for _, sec := range m.sections {
 		if subDoc, ok := doc[sec.Key()]; ok {
-			if jsonBytes, err := bson.MarshalExtJSON(subDoc, true, false); err == nil {
-				_ = sec.Unmarshal(jsonBytes)
+			// 用标准 json.Marshal 而非 bson.MarshalExtJSON：
+			// - canonical ExtJSON 会把数字包成 {"$numberInt":"400"}
+			// - relaxed ExtJSON 会把 double 渲染成 "400.0"
+			// 两者都会让 section 的标准 json.Unmarshal 解析 int32 字段失败、数据归零；
+			// 而 encoding/json 对整数值的 float64 输出 "400"，可正常解进 int32
+			jsonBytes, err := json.Marshal(subDoc)
+			if err != nil {
+				log.Printf("[PlayerModel] 玩家 %s 分区 %s 序列化失败: %v", m.PlayerID, sec.Key(), err)
+				continue
+			}
+			if err := sec.Unmarshal(jsonBytes); err != nil {
+				log.Printf("[PlayerModel] 玩家 %s 分区 %s 反序列化失败: %v", m.PlayerID, sec.Key(), err)
 			}
 		}
 	}

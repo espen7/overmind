@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"ergo.services/ergo"
 	"ergo.services/ergo/gen"
@@ -81,18 +82,26 @@ func main() {
 		}
 	}
 
-	// 7. Spawn 启动单例 HomeCoordinatorActor ("home_coordinator")
+	// 7. 构建哈希环管理器: 运行期真相源为 Mongo 环文档 (yaml 播种/兜底), 3s 轮询热切
+	// （协调器分配 guard 用当前环自检归属, 释放握手用上一版环反查旧归属）
+	ringMgr := storage.BuildRingManager(cfg.HomeRing.Nodes, cfg.HomeRing.Version, cfg.HomeRing.PrevNodes, "home")
+	if ringMgr == nil {
+		log.Fatalf("配置错误: Mongo 环文档与 home_ring.nodes 均为空, 无法构建哈希环")
+	}
+	storage.StartRingPoller(ringMgr, 3*time.Second, "home")
+
+	// 8. Spawn 启动单例 HomeCoordinatorActor ("home_coordinator")
 	coordinatorName := "home_coordinator"
 	pid, spawnErr := homeNode.SpawnRegister(gen.Atom(coordinatorName), func() gen.ProcessBehavior {
 		return &home.HomeCoordinatorActor{}
-	}, gen.ProcessOptions{})
+	}, gen.ProcessOptions{}, ringMgr, cfg.WorldNode)
 
 	if spawnErr != nil {
 		log.Fatalf("派生 HomeCoordinatorActor 失败: %v", spawnErr)
 	}
 	log.Printf("成功派生 HomeCoordinatorActor: %s", pid.String())
 
-	// 8. 优雅关闭：监听系统信号
+	// 9. 优雅关闭：监听系统信号
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 

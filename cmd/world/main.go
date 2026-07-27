@@ -10,6 +10,7 @@ import (
 
 	"overmind/internal/app/world"
 	"overmind/internal/pkg/config"
+	"overmind/internal/pkg/storage"
 )
 
 var (
@@ -60,25 +61,33 @@ func main() {
 		}
 	}
 
-	// 5. Spawn 启动 Cell 1 对应的 CellActor ("cell_1")
-	cellName := "cell_1"
-	pid, spawnErr := worldNode.SpawnRegister(gen.Atom(cellName), func() gen.ProcessBehavior {
-		return &world.CellActor{}
-	}, gen.ProcessOptions{})
+	// 5. 构建 Home 哈希环 (world → home 主动通知的归属寻址):
+	// 运行期真相源为 Mongo 环文档 (yaml 播种/兜底), 3s 轮询热切
+	mongoReady := false
+	if cfg.Database.URI != "" {
+		if dbErr := storage.InitDB(cfg.Database.URI, cfg.Database.DBName); dbErr != nil {
+			log.Printf("警告: 连接 Mongo 失败, 退化为 yaml 静态环 (无法感知在线扩缩容): %v", dbErr)
+		} else {
+			mongoReady = true
+		}
+	}
+
+	ringMgr := storage.BuildRingManager(cfg.HomeRing.Nodes, cfg.HomeRing.Version, cfg.HomeRing.PrevNodes, "world")
+	if ringMgr == nil {
+		log.Printf("警告: Mongo 环文档与 home_ring 配置均为空, world → home 主动通知不可用")
+	} else if mongoReady {
+		storage.StartRingPoller(ringMgr, 3*time.Second, "world")
+	}
+
+	// 6. Spawn 启动大地图统一入口 WorldActor ("world_actor")
+	pid, spawnErr := worldNode.SpawnRegister(gen.Atom("world_actor"), func() gen.ProcessBehavior {
+		return &world.WorldActor{}
+	}, gen.ProcessOptions{}, ringMgr)
 
 	if spawnErr != nil {
-		log.Fatalf("派生 CellActor 失败: %v", spawnErr)
+		log.Fatalf("派生 WorldActor 失败: %v", spawnErr)
 	}
-	log.Printf("成功派生 CellActor: %s", pid.String())
-
-	// 6. 模拟大地图每隔几秒产生一次行军位置变更，广播给订阅 chunk_101 的连接 Actor
-	go func() {
-		for {
-			time.Sleep(3 * time.Second)
-			log.Printf("[World Node] 定时向 cell_1 发送 trigger_march_sync 指令...")
-			_ = worldNode.Send(pid, "trigger_march_sync")
-		}
-	}()
+	log.Printf("成功派生 WorldActor: %s", pid.String())
 
 	// 7. 阻塞主线程保持运行
 	select {}

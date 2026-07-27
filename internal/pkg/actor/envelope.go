@@ -12,8 +12,17 @@ type SpawnPlayerReq struct {
 	PlayerID string
 }
 
+// 内部协议号 (不经网关/客户端, 仅用于 home ↔ world 节点间 RPCEnvelope 投递)
+// 客户端协议段: 1000~1999 网关本地, 10000~19999 home, 20000~29999 world (见 game.proto);
+// 90000+ 为服务端内部段, 网关不转发, 客户端无法伪造
+const (
+	ProtoHomeBuildReport int32 = 90001 // home → world: 玩家建筑升级上报
+	ProtoWorldBuildAck   int32 = 90002 // world → home: 建筑上报确认回执
+)
+
 // SendEnvelope 封包并发送跨节点 RPC 消息
-func SendEnvelope(process gen.Process, to gen.PID, sessionID int64, playerID string, protoID int32, payloadBytes []byte) error {
+// to 支持 gen.PID / gen.ProcessID / gen.Atom 等 ergo 寻址类型
+func SendEnvelope(process gen.Process, to any, sessionID int64, playerID string, protoID int32, payloadBytes []byte) error {
 	// 1. 封装为 RPCEnvelope
 	envelope := &rpc.RPCEnvelope{
 		SessionId: sessionID,

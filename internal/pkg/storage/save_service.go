@@ -14,6 +14,7 @@ import (
 // SaveCommand 表示一次异步落地请求
 type SaveCommand struct {
 	PlayerID    string
+	Epoch       int64                  // 所有权任期号，落盘 filter 携带此值实现写入围栏 (fencing)
 	DirtyFields map[string]interface{} // 字段级差量: "base.gold" -> 400, "bag.items" -> map[...]
 	DoneCh      chan error             // 非 nil 时调用方阻塞等待写入结果（用于 Terminate 同步落地）
 }
@@ -79,7 +80,7 @@ func saveWorker(id int, batchSize int) {
 	}
 }
 
-// flushBatch 批量写入 MongoDB（字段级 $set）
+// flushBatch 批量写入 MongoDB（字段级 $set + epoch 写入围栏）
 func flushBatch(batch []SaveCommand) {
 	if len(batch) == 0 {
 		return
@@ -94,10 +95,12 @@ func flushBatch(batch []SaveCommand) {
 		}
 		update["updated_at"] = time.Now()
 
+		// filter 携带 epoch：若文档已被新主人抢占 (epoch 已递增)，
+		// 本次写入匹配不到任何文档而静默作废，防止旧主脏写。
+		// 注意：不可 upsert，否则被围栏拒绝的写入会退化成插入新文档。
 		model := mongo.NewUpdateOneModel().
-			SetFilter(bson.M{"_id": cmd.PlayerID}).
-			SetUpdate(bson.M{"$set": update}).
-			SetUpsert(true)
+			SetFilter(bson.M{"_id": cmd.PlayerID, "epoch": cmd.Epoch}).
+			SetUpdate(bson.M{"$set": update})
 		models = append(models, model)
 	}
 
@@ -105,10 +108,15 @@ func flushBatch(batch []SaveCommand) {
 	defer cancel()
 
 	opts := options.BulkWrite().SetOrdered(false)
-	_, err := PlayerCol.BulkWrite(ctx, models, opts)
+	result, err := PlayerCol.BulkWrite(ctx, models, opts)
 
 	if err != nil {
 		log.Printf("[SaveService] BulkWrite 失败 (batch size: %d): %v", len(batch), err)
+	} else if result.MatchedCount < int64(len(models)) {
+		// 存在被 epoch 围栏拒绝的写入：说明有旧主人在所有权转移后仍尝试落盘，
+		// 数据安全已由围栏保障，此处仅告警便于排查。
+		log.Printf("[SaveService] 警告: %d 条写入被 epoch 围栏拒绝 (旧主人迟到写入已作废)",
+			int64(len(models))-result.MatchedCount)
 	}
 
 	// 通知所有等待者

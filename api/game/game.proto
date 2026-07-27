@@ -18,8 +18,10 @@ enum MsgID {
     MSG_S2C_SYNC_DATA = 10001;
     MSG_C2S_BUILD_UPGRADE = 10005;
     MSG_S2C_BUILD_UPGRADE_RES = 10006;
-    MSG_C2S_SUBSCRIBE_MAP = 10010;
-    MSG_S2C_MAP_BROADCAST = 10011;
+
+    // 大地图 / World 协议 (20000 - 29999)
+    MSG_C2S_WORLD_PING = 20001;
+    MSG_S2C_WORLD_PONG = 20002;
 }
 
 // C2S_Login 客户端请求登录 (ProtoID: 1001)
@@ -61,4 +63,19 @@ message S2C_BuildUpgradeRes {
     int32  code     = 1;
     string build_id = 2;
     int32  level    = 3;
+}
+
+// C2S_WorldPing 客户端大地图探活请求 (ProtoID: 20001)
+// 业务坐标由客户端携带; 区域/分片概念属于服务端内部, 不出现在客户端协议中
+message C2S_WorldPing {
+    int32 x = 1;
+    int32 y = 2;
+}
+
+// S2C_WorldPong 服务端大地图探活响应 (ProtoID: 20002)
+message S2C_WorldPong {
+    int64  server_time = 1;
+    int32  x           = 2;
+    int32  y           = 3;
+    string msg         = 4;
 }

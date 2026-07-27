@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v4.25.1
-// source: api/game/game.proto
+// source: game.proto
 
 package game
 
@@ -35,8 +35,9 @@ const (
 	MsgID_MSG_S2C_SYNC_DATA         MsgID = 10001
 	MsgID_MSG_C2S_BUILD_UPGRADE     MsgID = 10005
 	MsgID_MSG_S2C_BUILD_UPGRADE_RES MsgID = 10006
-	MsgID_MSG_C2S_SUBSCRIBE_MAP     MsgID = 10010
-	MsgID_MSG_S2C_MAP_BROADCAST     MsgID = 10011
+	// 大地图 / World 协议 (20000 - 29999)
+	MsgID_MSG_C2S_WORLD_PING MsgID = 20001
+	MsgID_MSG_S2C_WORLD_PONG MsgID = 20002
 )
 
 // Enum value maps for MsgID.
@@ -50,8 +51,8 @@ var (
 		10001: "MSG_S2C_SYNC_DATA",
 		10005: "MSG_C2S_BUILD_UPGRADE",
 		10006: "MSG_S2C_BUILD_UPGRADE_RES",
-		10010: "MSG_C2S_SUBSCRIBE_MAP",
-		10011: "MSG_S2C_MAP_BROADCAST",
+		20001: "MSG_C2S_WORLD_PING",
+		20002: "MSG_S2C_WORLD_PONG",
 	}
 	MsgID_value = map[string]int32{
 		"MSG_NONE":                  0,
@@ -62,8 +63,8 @@ var (
 		"MSG_S2C_SYNC_DATA":         10001,
 		"MSG_C2S_BUILD_UPGRADE":     10005,
 		"MSG_S2C_BUILD_UPGRADE_RES": 10006,
-		"MSG_C2S_SUBSCRIBE_MAP":     10010,
-		"MSG_S2C_MAP_BROADCAST":     10011,
+		"MSG_C2S_WORLD_PING":        20001,
+		"MSG_S2C_WORLD_PONG":        20002,
 	}
 )
 
@@ -78,11 +79,11 @@ func (x MsgID) String() string {
 }
 
 func (MsgID) Descriptor() protoreflect.EnumDescriptor {
-	return file_api_game_game_proto_enumTypes[0].Descriptor()
+	return file_game_proto_enumTypes[0].Descriptor()
 }
 
 func (MsgID) Type() protoreflect.EnumType {
-	return &file_api_game_game_proto_enumTypes[0]
+	return &file_game_proto_enumTypes[0]
 }
 
 func (x MsgID) Number() protoreflect.EnumNumber {
@@ -91,7 +92,7 @@ func (x MsgID) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use MsgID.Descriptor instead.
 func (MsgID) EnumDescriptor() ([]byte, []int) {
-	return file_api_game_game_proto_rawDescGZIP(), []int{0}
+	return file_game_proto_rawDescGZIP(), []int{0}
 }
 
 // C2S_Login 客户端请求登录 (ProtoID: 1001)
@@ -105,7 +106,7 @@ type C2S_Login struct {
 
 func (x *C2S_Login) Reset() {
 	*x = C2S_Login{}
-	mi := &file_api_game_game_proto_msgTypes[0]
+	mi := &file_game_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -117,7 +118,7 @@ func (x *C2S_Login) String() string {
 func (*C2S_Login) ProtoMessage() {}
 
 func (x *C2S_Login) ProtoReflect() protoreflect.Message {
-	mi := &file_api_game_game_proto_msgTypes[0]
+	mi := &file_game_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -130,7 +131,7 @@ func (x *C2S_Login) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use C2S_Login.ProtoReflect.Descriptor instead.
 func (*C2S_Login) Descriptor() ([]byte, []int) {
-	return file_api_game_game_proto_rawDescGZIP(), []int{0}
+	return file_game_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *C2S_Login) GetPlayerId() string {
@@ -158,7 +159,7 @@ type S2C_LoginRes struct {
 
 func (x *S2C_LoginRes) Reset() {
 	*x = S2C_LoginRes{}
-	mi := &file_api_game_game_proto_msgTypes[1]
+	mi := &file_game_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -170,7 +171,7 @@ func (x *S2C_LoginRes) String() string {
 func (*S2C_LoginRes) ProtoMessage() {}
 
 func (x *S2C_LoginRes) ProtoReflect() protoreflect.Message {
-	mi := &file_api_game_game_proto_msgTypes[1]
+	mi := &file_game_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -183,7 +184,7 @@ func (x *S2C_LoginRes) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use S2C_LoginRes.ProtoReflect.Descriptor instead.
 func (*S2C_LoginRes) Descriptor() ([]byte, []int) {
-	return file_api_game_game_proto_rawDescGZIP(), []int{1}
+	return file_game_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *S2C_LoginRes) GetCode() int32 {
@@ -210,7 +211,7 @@ type C2S_Heartbeat struct {
 
 func (x *C2S_Heartbeat) Reset() {
 	*x = C2S_Heartbeat{}
-	mi := &file_api_game_game_proto_msgTypes[2]
+	mi := &file_game_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -222,7 +223,7 @@ func (x *C2S_Heartbeat) String() string {
 func (*C2S_Heartbeat) ProtoMessage() {}
 
 func (x *C2S_Heartbeat) ProtoReflect() protoreflect.Message {
-	mi := &file_api_game_game_proto_msgTypes[2]
+	mi := &file_game_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -235,7 +236,7 @@ func (x *C2S_Heartbeat) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use C2S_Heartbeat.ProtoReflect.Descriptor instead.
 func (*C2S_Heartbeat) Descriptor() ([]byte, []int) {
-	return file_api_game_game_proto_rawDescGZIP(), []int{2}
+	return file_game_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *C2S_Heartbeat) GetClientTime() int64 {
@@ -255,7 +256,7 @@ type S2C_HeartbeatRes struct {
 
 func (x *S2C_HeartbeatRes) Reset() {
 	*x = S2C_HeartbeatRes{}
-	mi := &file_api_game_game_proto_msgTypes[3]
+	mi := &file_game_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -267,7 +268,7 @@ func (x *S2C_HeartbeatRes) String() string {
 func (*S2C_HeartbeatRes) ProtoMessage() {}
 
 func (x *S2C_HeartbeatRes) ProtoReflect() protoreflect.Message {
-	mi := &file_api_game_game_proto_msgTypes[3]
+	mi := &file_game_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -280,7 +281,7 @@ func (x *S2C_HeartbeatRes) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use S2C_HeartbeatRes.ProtoReflect.Descriptor instead.
 func (*S2C_HeartbeatRes) Descriptor() ([]byte, []int) {
-	return file_api_game_game_proto_rawDescGZIP(), []int{3}
+	return file_game_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *S2C_HeartbeatRes) GetServerTime() int64 {
@@ -302,7 +303,7 @@ type S2C_SyncData struct {
 
 func (x *S2C_SyncData) Reset() {
 	*x = S2C_SyncData{}
-	mi := &file_api_game_game_proto_msgTypes[4]
+	mi := &file_game_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -314,7 +315,7 @@ func (x *S2C_SyncData) String() string {
 func (*S2C_SyncData) ProtoMessage() {}
 
 func (x *S2C_SyncData) ProtoReflect() protoreflect.Message {
-	mi := &file_api_game_game_proto_msgTypes[4]
+	mi := &file_game_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -327,7 +328,7 @@ func (x *S2C_SyncData) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use S2C_SyncData.ProtoReflect.Descriptor instead.
 func (*S2C_SyncData) Descriptor() ([]byte, []int) {
-	return file_api_game_game_proto_rawDescGZIP(), []int{4}
+	return file_game_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *S2C_SyncData) GetGold() int32 {
@@ -361,7 +362,7 @@ type C2S_BuildUpgrade struct {
 
 func (x *C2S_BuildUpgrade) Reset() {
 	*x = C2S_BuildUpgrade{}
-	mi := &file_api_game_game_proto_msgTypes[5]
+	mi := &file_game_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -373,7 +374,7 @@ func (x *C2S_BuildUpgrade) String() string {
 func (*C2S_BuildUpgrade) ProtoMessage() {}
 
 func (x *C2S_BuildUpgrade) ProtoReflect() protoreflect.Message {
-	mi := &file_api_game_game_proto_msgTypes[5]
+	mi := &file_game_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -386,7 +387,7 @@ func (x *C2S_BuildUpgrade) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use C2S_BuildUpgrade.ProtoReflect.Descriptor instead.
 func (*C2S_BuildUpgrade) Descriptor() ([]byte, []int) {
-	return file_api_game_game_proto_rawDescGZIP(), []int{5}
+	return file_game_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *C2S_BuildUpgrade) GetBuildId() string {
@@ -408,7 +409,7 @@ type S2C_BuildUpgradeRes struct {
 
 func (x *S2C_BuildUpgradeRes) Reset() {
 	*x = S2C_BuildUpgradeRes{}
-	mi := &file_api_game_game_proto_msgTypes[6]
+	mi := &file_game_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -420,7 +421,7 @@ func (x *S2C_BuildUpgradeRes) String() string {
 func (*S2C_BuildUpgradeRes) ProtoMessage() {}
 
 func (x *S2C_BuildUpgradeRes) ProtoReflect() protoreflect.Message {
-	mi := &file_api_game_game_proto_msgTypes[6]
+	mi := &file_game_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -433,7 +434,7 @@ func (x *S2C_BuildUpgradeRes) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use S2C_BuildUpgradeRes.ProtoReflect.Descriptor instead.
 func (*S2C_BuildUpgradeRes) Descriptor() ([]byte, []int) {
-	return file_api_game_game_proto_rawDescGZIP(), []int{6}
+	return file_game_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *S2C_BuildUpgradeRes) GetCode() int32 {
@@ -457,11 +458,135 @@ func (x *S2C_BuildUpgradeRes) GetLevel() int32 {
 	return 0
 }
 
-var File_api_game_game_proto protoreflect.FileDescriptor
+// C2S_WorldPing 客户端大地图探活请求 (ProtoID: 20001)
+// 业务坐标由客户端携带; 区域/分片概念属于服务端内部, 不出现在客户端协议中
+type C2S_WorldPing struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	X             int32                  `protobuf:"varint,1,opt,name=x,proto3" json:"x,omitempty"`
+	Y             int32                  `protobuf:"varint,2,opt,name=y,proto3" json:"y,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
 
-const file_api_game_game_proto_rawDesc = "" +
+func (x *C2S_WorldPing) Reset() {
+	*x = C2S_WorldPing{}
+	mi := &file_game_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *C2S_WorldPing) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*C2S_WorldPing) ProtoMessage() {}
+
+func (x *C2S_WorldPing) ProtoReflect() protoreflect.Message {
+	mi := &file_game_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use C2S_WorldPing.ProtoReflect.Descriptor instead.
+func (*C2S_WorldPing) Descriptor() ([]byte, []int) {
+	return file_game_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *C2S_WorldPing) GetX() int32 {
+	if x != nil {
+		return x.X
+	}
+	return 0
+}
+
+func (x *C2S_WorldPing) GetY() int32 {
+	if x != nil {
+		return x.Y
+	}
+	return 0
+}
+
+// S2C_WorldPong 服务端大地图探活响应 (ProtoID: 20002)
+type S2C_WorldPong struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ServerTime    int64                  `protobuf:"varint,1,opt,name=server_time,json=serverTime,proto3" json:"server_time,omitempty"`
+	X             int32                  `protobuf:"varint,2,opt,name=x,proto3" json:"x,omitempty"`
+	Y             int32                  `protobuf:"varint,3,opt,name=y,proto3" json:"y,omitempty"`
+	Msg           string                 `protobuf:"bytes,4,opt,name=msg,proto3" json:"msg,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *S2C_WorldPong) Reset() {
+	*x = S2C_WorldPong{}
+	mi := &file_game_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *S2C_WorldPong) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*S2C_WorldPong) ProtoMessage() {}
+
+func (x *S2C_WorldPong) ProtoReflect() protoreflect.Message {
+	mi := &file_game_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use S2C_WorldPong.ProtoReflect.Descriptor instead.
+func (*S2C_WorldPong) Descriptor() ([]byte, []int) {
+	return file_game_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *S2C_WorldPong) GetServerTime() int64 {
+	if x != nil {
+		return x.ServerTime
+	}
+	return 0
+}
+
+func (x *S2C_WorldPong) GetX() int32 {
+	if x != nil {
+		return x.X
+	}
+	return 0
+}
+
+func (x *S2C_WorldPong) GetY() int32 {
+	if x != nil {
+		return x.Y
+	}
+	return 0
+}
+
+func (x *S2C_WorldPong) GetMsg() string {
+	if x != nil {
+		return x.Msg
+	}
+	return ""
+}
+
+var File_game_proto protoreflect.FileDescriptor
+
+const file_game_proto_rawDesc = "" +
 	"\n" +
-	"\x13api/game/game.proto\x12\x03api\">\n" +
+	"\n" +
+	"game.proto\x12\x03api\">\n" +
 	"\tC2S_Login\x12\x1b\n" +
 	"\tplayer_id\x18\x01 \x01(\tR\bplayerId\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\tR\x05token\"4\n" +
@@ -483,7 +608,16 @@ const file_api_game_game_proto_rawDesc = "" +
 	"\x13S2C_BuildUpgradeRes\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\x05R\x04code\x12\x19\n" +
 	"\bbuild_id\x18\x02 \x01(\tR\abuildId\x12\x14\n" +
-	"\x05level\x18\x03 \x01(\x05R\x05level*\x81\x02\n" +
+	"\x05level\x18\x03 \x01(\x05R\x05level\"+\n" +
+	"\rC2S_WorldPing\x12\f\n" +
+	"\x01x\x18\x01 \x01(\x05R\x01x\x12\f\n" +
+	"\x01y\x18\x02 \x01(\x05R\x01y\"^\n" +
+	"\rS2C_WorldPong\x12\x1f\n" +
+	"\vserver_time\x18\x01 \x01(\x03R\n" +
+	"serverTime\x12\f\n" +
+	"\x01x\x18\x02 \x01(\x05R\x01x\x12\f\n" +
+	"\x01y\x18\x03 \x01(\x05R\x01y\x12\x10\n" +
+	"\x03msg\x18\x04 \x01(\tR\x03msg*\xfd\x01\n" +
 	"\x05MsgID\x12\f\n" +
 	"\bMSG_NONE\x10\x00\x12\x12\n" +
 	"\rMSG_C2S_LOGIN\x10\xe9\a\x12\x16\n" +
@@ -492,25 +626,25 @@ const file_api_game_game_proto_rawDesc = "" +
 	"\x15MSG_S2C_HEARTBEAT_RES\x10\xec\a\x12\x16\n" +
 	"\x11MSG_S2C_SYNC_DATA\x10\x91N\x12\x1a\n" +
 	"\x15MSG_C2S_BUILD_UPGRADE\x10\x95N\x12\x1e\n" +
-	"\x19MSG_S2C_BUILD_UPGRADE_RES\x10\x96N\x12\x1a\n" +
-	"\x15MSG_C2S_SUBSCRIBE_MAP\x10\x9aN\x12\x1a\n" +
-	"\x15MSG_S2C_MAP_BROADCAST\x10\x9bNB\x13Z\x11overmind/api/gameb\x06proto3"
+	"\x19MSG_S2C_BUILD_UPGRADE_RES\x10\x96N\x12\x18\n" +
+	"\x12MSG_C2S_WORLD_PING\x10\xa1\x9c\x01\x12\x18\n" +
+	"\x12MSG_S2C_WORLD_PONG\x10\xa2\x9c\x01B\x13Z\x11overmind/api/gameb\x06proto3"
 
 var (
-	file_api_game_game_proto_rawDescOnce sync.Once
-	file_api_game_game_proto_rawDescData []byte
+	file_game_proto_rawDescOnce sync.Once
+	file_game_proto_rawDescData []byte
 )
 
-func file_api_game_game_proto_rawDescGZIP() []byte {
-	file_api_game_game_proto_rawDescOnce.Do(func() {
-		file_api_game_game_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_api_game_game_proto_rawDesc), len(file_api_game_game_proto_rawDesc)))
+func file_game_proto_rawDescGZIP() []byte {
+	file_game_proto_rawDescOnce.Do(func() {
+		file_game_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_game_proto_rawDesc), len(file_game_proto_rawDesc)))
 	})
-	return file_api_game_game_proto_rawDescData
+	return file_game_proto_rawDescData
 }
 
-var file_api_game_game_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_api_game_game_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
-var file_api_game_game_proto_goTypes = []any{
+var file_game_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_game_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_game_proto_goTypes = []any{
 	(MsgID)(0),                  // 0: api.MsgID
 	(*C2S_Login)(nil),           // 1: api.C2S_Login
 	(*S2C_LoginRes)(nil),        // 2: api.S2C_LoginRes
@@ -519,8 +653,10 @@ var file_api_game_game_proto_goTypes = []any{
 	(*S2C_SyncData)(nil),        // 5: api.S2C_SyncData
 	(*C2S_BuildUpgrade)(nil),    // 6: api.C2S_BuildUpgrade
 	(*S2C_BuildUpgradeRes)(nil), // 7: api.S2C_BuildUpgradeRes
+	(*C2S_WorldPing)(nil),       // 8: api.C2S_WorldPing
+	(*S2C_WorldPong)(nil),       // 9: api.S2C_WorldPong
 }
-var file_api_game_game_proto_depIdxs = []int32{
+var file_game_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
 	0, // [0:0] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
@@ -528,27 +664,27 @@ var file_api_game_game_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_api_game_game_proto_init() }
-func file_api_game_game_proto_init() {
-	if File_api_game_game_proto != nil {
+func init() { file_game_proto_init() }
+func file_game_proto_init() {
+	if File_game_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_game_game_proto_rawDesc), len(file_api_game_game_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_game_proto_rawDesc), len(file_game_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   7,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_api_game_game_proto_goTypes,
-		DependencyIndexes: file_api_game_game_proto_depIdxs,
-		EnumInfos:         file_api_game_game_proto_enumTypes,
-		MessageInfos:      file_api_game_game_proto_msgTypes,
+		GoTypes:           file_game_proto_goTypes,
+		DependencyIndexes: file_game_proto_depIdxs,
+		EnumInfos:         file_game_proto_enumTypes,
+		MessageInfos:      file_game_proto_msgTypes,
 	}.Build()
-	File_api_game_game_proto = out.File
-	file_api_game_game_proto_goTypes = nil
-	file_api_game_game_proto_depIdxs = nil
+	File_game_proto = out.File
+	file_game_proto_goTypes = nil
+	file_game_proto_depIdxs = nil
 }
