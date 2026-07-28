@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -17,13 +18,23 @@ type SaveCommand struct {
 	Epoch       int64                  // 所有权任期号，落盘 filter 携带此值实现写入围栏 (fencing)
 	DirtyFields map[string]interface{} // 字段级差量: "base.gold" -> 400, "bag.items" -> map[...]
 	DoneCh      chan error             // 非 nil 时调用方阻塞等待写入结果（用于 Terminate 同步落地）
+	Attempts    int                    // 已失败重试次数 (回投退避用, 调用方无需设置)
 }
+
+// 失败重试参数: BulkWrite 失败的批次回投队列指数退避重试。
+// epoch 围栏保证重试永远安全: 迟到的重试要么落在自己 epoch 上成功,
+// 要么被新主人抢占后的围栏作废, 不可能写脏
+const (
+	maxSaveAttempts = 10               // 累计重试上限, 超过后丢弃并告警
+	maxSaveBackoff  = 30 * time.Second // 退避封顶
+)
 
 // SaveQueue 全局存盘队列，所有 PlayerActor 向此 channel 投递落地请求
 var SaveQueue chan SaveCommand
 
 var (
-	saveWg sync.WaitGroup
+	saveWg      sync.WaitGroup
+	saveClosing atomic.Bool // 关停标记: 置位后不再回投重试 (防止向已关闭队列投递)
 )
 
 // InitSaveService 初始化全局异步存盘服务
@@ -41,6 +52,7 @@ func InitSaveService(workerCount, batchSize int) {
 
 // DrainAndClose 优雅关闭：关闭队列，等待所有 worker 排空并退出
 func DrainAndClose() {
+	saveClosing.Store(true)
 	close(SaveQueue) // 关闭 channel，worker 会自动退出循环
 	saveWg.Wait()
 	log.Printf("[SaveService] 所有 Worker 已退出，队列已排空")
@@ -111,7 +123,8 @@ func flushBatch(batch []SaveCommand) {
 	result, err := PlayerCol.BulkWrite(ctx, models, opts)
 
 	if err != nil {
-		log.Printf("[SaveService] BulkWrite 失败 (batch size: %d): %v", len(batch), err)
+		log.Printf("[SaveService] BulkWrite 失败 (batch size: %d), 回投重试: %v", len(batch), err)
+		requeueFailed(batch)
 	} else if result.MatchedCount < int64(len(models)) {
 		// 存在被 epoch 围栏拒绝的写入：说明有旧主人在所有权转移后仍尝试落盘，
 		// 数据安全已由围栏保障，此处仅告警便于排查。
@@ -119,10 +132,44 @@ func flushBatch(batch []SaveCommand) {
 			int64(len(models))-result.MatchedCount)
 	}
 
-	// 通知所有等待者
+	// 通知所有等待者 (同步等待者立即拿到本次结果, 不陪同重试阻塞——上游有自己的超时链)
 	for _, cmd := range batch {
 		if cmd.DoneCh != nil {
 			cmd.DoneCh <- err
 		}
+	}
+}
+
+// requeueFailed 失败批次回投: 退避后重新入队重试, 超过上限丢弃并告警。
+// 同步命令也转为异步回投 (调用方已拿到错误): 纯卸载场景下 Mongo 恢复后数据照样落地,
+// 迁移场景下若新主已抢占则被围栏正确作废
+func requeueFailed(batch []SaveCommand) {
+	for _, cmd := range batch {
+		cmd.Attempts++
+		if cmd.Attempts >= maxSaveAttempts {
+			log.Printf("[SaveService] 严重: 玩家 %s 落盘重试 %d 次仍失败, 该批增量丢弃 (脏字段数: %d)",
+				cmd.PlayerID, cmd.Attempts, len(cmd.DirtyFields))
+			continue
+		}
+		delay := time.Duration(1<<uint(cmd.Attempts-1)) * time.Second
+		if delay > maxSaveBackoff {
+			delay = maxSaveBackoff
+		}
+		c := cmd
+		c.DoneCh = nil // 重试一律转异步
+		go func() {
+			defer func() {
+				// 退避期间队列被关闭: 捕获投递 panic, 丢弃并告警
+				if r := recover(); r != nil {
+					log.Printf("[SaveService] 严重: 关停期间重试投递失败, 玩家 %s 增量丢弃", c.PlayerID)
+				}
+			}()
+			time.Sleep(delay)
+			if saveClosing.Load() {
+				log.Printf("[SaveService] 严重: 服务关停中放弃重试, 玩家 %s 增量丢弃", c.PlayerID)
+				return
+			}
+			SaveQueue <- c
+		}()
 	}
 }

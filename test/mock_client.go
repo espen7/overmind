@@ -56,7 +56,7 @@ func readLoop(sessionName string, conn *websocket.Conn) {
 }
 
 func runClientSession(sessionName string, autoDisconnectSec int, shouldUpgrade bool) {
-	u := url.URL{Scheme: "ws", Host: "127.0.0.1:8080", Path: "/ws"}
+	u := url.URL{Scheme: "ws", Host: "127.0.0.1:5435", Path: "/ws"}
 	log.Printf("[%s] 正在连接网关 %s...", sessionName, u.String())
 
 	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
@@ -139,7 +139,7 @@ func main() {
 // runScaleScenario 扩容剧本客户端: 全程保持同一条连接,
 // 在第一次升级后留出窗口给外部执行 ringctl add, 第二次升级应触发在线迁移到新节点
 func runScaleScenario() {
-	u := url.URL{Scheme: "ws", Host: "127.0.0.1:8080", Path: "/ws"}
+	u := url.URL{Scheme: "ws", Host: "127.0.0.1:5435", Path: "/ws"}
 	log.Printf("[Scale] 正在连接网关 %s...", u.String())
 
 	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
@@ -192,7 +192,7 @@ func sendUpgrade(conn *websocket.Conn, seq int32) {
 // 三段升级中间留两个窗口给外部改环:
 // 升级①@home1 -> [ringctl add home2] -> 升级②迁往 home2 -> [ringctl remove home2] -> 升级③迁回 home1
 func runShrinkScenario() {
-	u := url.URL{Scheme: "ws", Host: "127.0.0.1:8080", Path: "/ws"}
+	u := url.URL{Scheme: "ws", Host: "127.0.0.1:5435", Path: "/ws"}
 	log.Printf("[Shrink] 正在连接网关 %s...", u.String())
 
 	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)

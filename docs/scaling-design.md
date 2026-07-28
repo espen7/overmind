@@ -155,13 +155,13 @@ gate → 新协调器            15s
 
 `ringctl` 命令（`cmd/ringctl`）：
 
-| 命令 | 作用 |
-|------|------|
-| `show` | 查看当前环文档 |
-| `init <n1,n2,...>` | 首次创建环文档（通常由节点启动播种，极少用到） |
-| `add <node>` | 扩容：新节点入环，旧环存入 prev_nodes |
-| `remove <node>` | 缩容/摘除宕机节点：节点出环，旧环存入 prev_nodes |
-| `commit` | 收敛完成后清空 prev_nodes（确认迁移期结束） |
+| 命令               | 作用                                             |
+|--------------------|--------------------------------------------------|
+| `show`             | 查看当前环文档                                   |
+| `init <n1,n2,...>` | 首次创建环文档（通常由节点启动播种，极少用到）   |
+| `add <node>`       | 扩容：新节点入环，旧环存入 prev_nodes            |
+| `remove <node>`    | 缩容/摘除宕机节点：节点出环，旧环存入 prev_nodes |
+| `commit`           | 收敛完成后清空 prev_nodes（确认迁移期结束）      |
 
 防呆：prev_nodes 非空时拒绝新的 add/remove（必须先 commit）；拒绝移除最后一个节点；
 CAS 冲突自动重读重试。
@@ -178,8 +178,9 @@ CAS 冲突自动重读重试。
 ### 扩容（1 节点 → 2 节点示例）
 
 ```
-1. 准备 home2 配置: node 名/端口唯一; routes 需包含其余 home 节点
-   （跨 home 释放握手需要互连）; home_ring 可保持旧值 (仅兜底, 以 Mongo 为准)
+1. 准备 home2 配置: node 名/端口唯一即可, 无需任何路由配置
+   （节点间寻址由 ergo 内嵌 registrar 自动解析, 见 §11 已落地项）;
+   home_ring 可保持旧值 (仅兜底, 以 Mongo 为准)
 2. 启动 home2 进程（加入集群, 此时尚无玩家路由到它）
 3. ringctl add home2@x.x.x.x
    → 文档 version+1, 旧环存入 prev_nodes
@@ -224,9 +225,9 @@ CAS 冲突自动重读重试。
 | 两个网关环版本短暂不一致，双节点各起一个 Actor | 后抢占者持新 epoch，先抢占者写入全部作废；网关每包校验最终收敛到新环                     |
 | 玩家迁移瞬间旧 Actor 被 Link 连带杀死网关连接  | 客户端重连，路由到新节点，数据已由握手/围栏保证完整                                      |
 | 换环推送乱序/重复                              | Manager 版本号校验直接拒绝                                                               |
-| 持旧环的网关/world 误找旧归属节点触发分配   | 协调器 guard 拒绝 ("error: wrong_owner")，调用方 ≤3s 后持新环重试，不会误抢所有权      |
-| Mongo 短暂不可达                               | 轮询失败仅记日志，各方持旧环继续服务；恢复后自动追上最新版本                          |
-| 并发运维同时改环                               | 文档 CAS 乐观锁只让一个成功，另一个重读重算；prev 未 commit 时拒绝叠加改环           |
+| 持旧环的网关/world 误找旧归属节点触发分配      | 协调器 guard 拒绝 ("error: wrong_owner")，调用方 ≤3s 后持新环重试，不会误抢所有权        |
+| Mongo 短暂不可达                               | 轮询失败仅记日志，各方持旧环继续服务；恢复后自动追上最新版本                             |
+| 并发运维同时改环                               | 文档 CAS 乐观锁只让一个成功，另一个重读重算；prev 未 commit 时拒绝叠加改环               |
 
 ## 9. 与 Akka Cluster Sharding 的对照
 
@@ -267,4 +268,10 @@ DB 状态始终一致，丢的只是瞬时指令。据此约定发送方契约�
 - [ ] 改环鉴权：ringctl 直连 Mongo，当前依赖 Mongo 访问控制；gate_ring_admin 依赖集群 cookie
 - [ ] 转发墓碑：旧 Actor 退位后保留 5~10s 转发模式，把迟到消息转发给新归属
   （Akka rebalance buffering 等价物，第三方系统接入后再评估）
-- [ ] k8s 部署时用 Service DNS 名替换静态 routes（或启用 ergo 内嵌 registrar 删掉 routes）
+- [x] 删除静态 routes, 改用 ergo 内嵌 registrar (host:4499) 按节点名自动解析监听端口
+  （三剧本实证: 新节点首连现场解析成功; k8s 上节点名改用 Service DNS 名即可, 零代码适配）
+- [x] SaveService 落盘失败回投重试: 失败批次指数退避 (1s 起步、30s 封顶、10 次上限) 重新入队,
+  同步等待者立即拿到错误不陪同阻塞 (上游有自己的超时链), 其增量同样转异步回投;
+  epoch 围栏保证重试永远安全 (迟到重试要么落自己 epoch, 要么被新主围栏作废)。
+  故障注入实证 (chaos_savefail.ps1): Mongo 停机期间 BulkWrite 连续失败回投,
+  恢复后第三次重试命中, 增量完整落地, 期间 RingPoller 持旧环继续服务

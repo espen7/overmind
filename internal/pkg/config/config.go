@@ -14,13 +14,6 @@ type NodeConfig struct {
 	ListenPort uint16 `yaml:"listen_port"`
 }
 
-// RouteConfig 描述集群静态路由
-type RouteConfig struct {
-	NodeName string `yaml:"node_name"`
-	Host     string `yaml:"host"`
-	Port     uint16 `yaml:"port"`
-}
-
 // MongoConfig Mongo 连接配置 (gate/world 只读集群元数据, 无需存盘参数)
 type MongoConfig struct {
 	URI    string `yaml:"uri"`
@@ -43,7 +36,6 @@ type GateConfig struct {
 		ListenAddr string `yaml:"listen_addr"`
 	} `yaml:"websocket"`
 	Database  MongoConfig    `yaml:"database"` // 集群环文档读取 (可缺省, 缺省时退化为 yaml 静态环)
-	Routes    []RouteConfig  `yaml:"routes"`
 	HomeRing  HomeRingConfig `yaml:"home_ring"`
 	WorldNode string         `yaml:"world_node"` // World 节点名, 用于寻址 world_actor
 }
@@ -57,7 +49,6 @@ type HomeConfig struct {
 		SaveWorkers int    `yaml:"save_workers"`
 		BatchSize   int    `yaml:"batch_size"`
 	} `yaml:"database"`
-	Routes    []RouteConfig  `yaml:"routes"`
 	HomeRing  HomeRingConfig `yaml:"home_ring"`
 	WorldNode string         `yaml:"world_node"` // World 节点名, 用于寻址 world_actor
 }
@@ -65,8 +56,7 @@ type HomeConfig struct {
 // WorldConfig 地图服节点专有配置
 type WorldConfig struct {
 	Node     NodeConfig     `yaml:"node"`
-	Database MongoConfig    `yaml:"database"` // 集群环文档读取 (可缺省, 缺省时退化为 yaml 静态环)
-	Routes   []RouteConfig  `yaml:"routes"`
+	Database MongoConfig    `yaml:"database"`  // 集群环文档读取 (可缺省, 缺省时退化为 yaml 静态环)
 	HomeRing HomeRingConfig `yaml:"home_ring"` // world → home 主动通知时的归属寻址
 }
 

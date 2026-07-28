@@ -8,16 +8,6 @@ database:
   db_name: "overmind"
   save_workers: 4
   batch_size: 32
-routes:
-  - node_name: "gate@127.0.0.1"
-    host: "127.0.0.1"
-    port: 15001
-  - node_name: "home2@127.0.0.1"
-    host: "127.0.0.1"
-    port: 15004
-  - node_name: "world@127.0.0.1"
-    host: "127.0.0.1"
-    port: 15003
 home_ring:
   version: 1
   nodes:

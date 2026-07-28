@@ -51,21 +51,7 @@ func main() {
 	}
 	log.Printf("Gate 节点启动成功: %s", gateNode.Name())
 
-	// 4. 配置静态节点路由，以便节点之间能相互连接寻路 (无需 etcd 依赖)
-	for _, r := range cfg.Routes {
-		route := gen.NetworkRoute{
-			Route: gen.Route{
-				Host: r.Host,
-				Port: r.Port,
-			},
-		}
-		err = gateNode.Network().AddRoute(r.NodeName, route, 1)
-		if err != nil {
-			log.Printf("添加去往节点 %s 的路由失败: %v", r.NodeName, err)
-		} else {
-			log.Printf("成功添加去往节点 %s (%s:%d) 的静态路由", r.NodeName, r.Host, r.Port)
-		}
-	}
+	// 4. 节点间寻址无需静态路由: ergo 内嵌 registrar (host:4499) 按节点名自动解析监听端口
 
 	// 5. 构建 Home 一致性哈希环: 运行期真相源为 Mongo 环文档 (yaml 播种/兜底), 3s 轮询热切
 	mongoReady := false

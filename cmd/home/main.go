@@ -66,21 +66,7 @@ func main() {
 	}
 	log.Printf("Home 节点启动成功: %s", homeNode.Name())
 
-	// 6. 静态连接寻路路由配置
-	for _, r := range cfg.Routes {
-		route := gen.NetworkRoute{
-			Route: gen.Route{
-				Host: r.Host,
-				Port: r.Port,
-			},
-		}
-		err = homeNode.Network().AddRoute(r.NodeName, route, 1)
-		if err != nil {
-			log.Printf("添加去往节点 %s 的路由失败: %v", r.NodeName, err)
-		} else {
-			log.Printf("成功添加去往节点 %s (%s:%d) 的静态路由", r.NodeName, r.Host, r.Port)
-		}
-	}
+	// 6. 节点间寻址无需静态路由: ergo 内嵌 registrar (host:4499) 按节点名自动解析监听端口
 
 	// 7. 构建哈希环管理器: 运行期真相源为 Mongo 环文档 (yaml 播种/兜底), 3s 轮询热切
 	// （协调器分配 guard 用当前环自检归属, 释放握手用上一版环反查旧归属）

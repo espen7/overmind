@@ -4,20 +4,10 @@ node:
   listen_host: "127.0.0.1"
   listen_port: 15001
 websocket:
-  listen_addr: "127.0.0.1:8080"
+  listen_addr: "127.0.0.1:5435"
 database:
   uri: "mongodb://127.0.0.1:27017"
   db_name: "overmind"
-routes:
-  - node_name: "home1@127.0.0.1"
-    host: "127.0.0.1"
-    port: 15002
-  - node_name: "home2@127.0.0.1"
-    host: "127.0.0.1"
-    port: 15004
-  - node_name: "world@127.0.0.1"
-    host: "127.0.0.1"
-    port: 15003
 home_ring:
   version: 1
   nodes:
