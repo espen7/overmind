@@ -115,6 +115,12 @@ func main() {
 		return
 	}
 
+	// shrink 模式: 配合 scripts/run_shrink_test.ps1 验证扩容+缩容(节点退役)全剧本
+	if len(os.Args) > 1 && os.Args[1] == "shrink" {
+		runShrinkScenario()
+		return
+	}
+
 	log.Printf("================ [测试阶段 1: 首次登录与升级] ================")
 	runClientSession("Client-Session-1", 2, true)
 
@@ -180,4 +186,57 @@ func sendUpgrade(conn *websocket.Conn, seq int32) {
 	upgradeFrame, _ := network.PackWS(int32(game.MsgID_MSG_C2S_BUILD_UPGRADE), seq, upgradeBytes)
 	_ = conn.WriteMessage(websocket.BinaryMessage, upgradeFrame)
 	time.Sleep(1 * time.Second)
+}
+
+// runShrinkScenario 扩容+缩容全剧本客户端: 全程保持同一条连接,
+// 三段升级中间留两个窗口给外部改环:
+// 升级①@home1 -> [ringctl add home2] -> 升级②迁往 home2 -> [ringctl remove home2] -> 升级③迁回 home1
+func runShrinkScenario() {
+	u := url.URL{Scheme: "ws", Host: "127.0.0.1:8080", Path: "/ws"}
+	log.Printf("[Shrink] 正在连接网关 %s...", u.String())
+
+	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	if err != nil {
+		log.Fatalf("[Shrink] 连接失败: %v", err)
+	}
+	defer conn.Close()
+
+	go readLoop("Shrink", conn)
+
+	// 1. 登录 (此时环为 [home1], test_player_999 归属 home1)
+	log.Printf("[Shrink] 发送 C2S_Login...")
+	loginReq := &game.C2S_Login{PlayerId: "test_player_999"}
+	loginBytes, _ := proto.Marshal(loginReq)
+	loginFrame, _ := network.PackWS(int32(game.MsgID_MSG_C2S_LOGIN), 1, loginBytes)
+	_ = conn.WriteMessage(websocket.BinaryMessage, loginFrame)
+	time.Sleep(1 * time.Second)
+
+	// 2. 扩容前第一次升级 (在 home1 上处理, 期望 Lv2)
+	log.Printf("[Shrink] 阶段① 发送第一次 C2S_BuildUpgrade (home1)...")
+	sendUpgrade(conn, 2)
+
+	// 3. 窗口 A: 外部执行 ringctl add home2 (各节点 <=3s 轮询热切)
+	log.Printf("[Shrink] 等待 10s (窗口 A: 外部执行 ringctl add home2, 归属变为 home2)...")
+	time.Sleep(10 * time.Second)
+
+	// 4. 扩容后第二次升级: 触发在线迁移 home1 -> home2 (期望 Lv3)
+	log.Printf("[Shrink] 阶段② 发送第二次 C2S_BuildUpgrade (应迁移至 home2)...")
+	sendUpgrade(conn, 3)
+
+	// 5. 窗口 B: 外部先 commit 扩容, 再执行 ringctl remove home2 (缩容)
+	log.Printf("[Shrink] 等待 10s (窗口 B: 外部执行 ringctl remove home2, 归属迁回 home1)...")
+	time.Sleep(10 * time.Second)
+
+	// 6. 缩容后第三次升级: 反向握手, home1 从 home2 手里把玩家接回来 (期望 Lv4)
+	log.Printf("[Shrink] 阶段③ 发送第三次 C2S_BuildUpgrade (应迁回 home1)...")
+	sendUpgrade(conn, 4)
+
+	// 7. 心跳验证连接仍健康
+	hbReq := &game.C2S_Heartbeat{}
+	hbBytes, _ := proto.Marshal(hbReq)
+	hbFrame, _ := network.PackWS(int32(game.MsgID_MSG_C2S_HEARTBEAT), 5, hbBytes)
+	_ = conn.WriteMessage(websocket.BinaryMessage, hbFrame)
+
+	time.Sleep(2 * time.Second)
+	log.Printf("[Shrink] 缩容剧本客户端流程完成, 退出。")
 }
